@@ -1,5 +1,6 @@
+#include <iostream>
 #include "simulator.hpp"
-#include "helper/utilities.hpp"
+#include "helper/console-input.hpp"
 #include "helper/constants.hpp"
 #include "parameters.hpp"
 
@@ -60,7 +61,7 @@ int main()
             simulation.fill_galaxies();
             break;
         case PRINT:
-            for (int i = 0; i < simulation.galaxies.size(); i++)
+            for (int i = 0; i < (int)simulation.galaxies.size(); i++)
             {
                 simulation.galaxies[i].print(i+1);
             }

@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include "utilities.hpp"
+#include "console-input.hpp"
 
 using namespace std;
 
@@ -23,7 +23,7 @@ int read_integer(string message)
         getline(cin, input);
         try
         {
-            size_t pos = 0;
+            std::size_t pos = 0;
             int output = stoi(input, &pos);
 
             // Check if the whole string was consumed
@@ -46,7 +46,7 @@ int read_integer(string message)
 int read_integer_range(string message, int minimum, int maximum)
 {
     int input;
-    bool in_range;
+    bool in_range = false;
 
     do
     {
@@ -74,7 +74,7 @@ double read_double(string message)
         getline(cin, input);
         try
         {
-            size_t pos = 0;
+            std::size_t pos = 0;
             double output = stod(input, &pos);
 
             // Check if the whole string was consumed
@@ -97,7 +97,7 @@ double read_double(string message)
 double read_double_range(string message, double minimum, double maximum, bool allow_zero)
 {
     double input;
-    bool in_range;
+    bool in_range = false;
 
     do
     {
@@ -106,7 +106,7 @@ double read_double_range(string message, double minimum, double maximum, bool al
         {
             cerr << "Out of range - must be between " << minimum << " and " << maximum << endl;
         }
-        else if (!allow_zero && input == 0.0)
+        else if (!allow_zero && input == 0)
         {
             cerr << "Zero is not allowed" << endl;
         }
