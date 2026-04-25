@@ -1,7 +1,7 @@
 #ifndef BODY_H
 #define BODY_H
 
-#include "helper/vec3.hpp"
+#include "vec3.hpp"
 #include <array>
 #include <vector>
 #include "parameters.hpp"
