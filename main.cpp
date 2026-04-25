@@ -29,6 +29,7 @@ enum MenuOption
 {
     INIT,
     PRINT,
+    RUN,
     QUIT
 };
 
@@ -38,17 +39,18 @@ MenuOption menu()
          << "[-] Main Menu" << endl;
     cout << "1. Initialise" << endl;
     cout << "2. Print state" << endl;
-    cout << "3. Quit" << endl;
+    cout << "3. Run simulation" << endl;
+    cout << "4. Quit" << endl;
     cout << endl;
 
-    int option = read_integer_range("  > ", 1, 3);
+    int option = read_integer_range("  > ", 1, 4);
     return (MenuOption)(option - 1);
 }
 
 int main()
 {
     Simulator<num_galaxies> simulation;
-    
+
     MenuOption option;
 
     do
@@ -63,8 +65,11 @@ int main()
         case PRINT:
             for (int i = 0; i < (int)simulation.galaxies.size(); i++)
             {
-                simulation.galaxies[i].print(i+1);
+                simulation.galaxies[i].print(i + 1);
             }
+            break;
+        case RUN:
+            simulation.integrate();
             break;
         default:
             break;

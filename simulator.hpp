@@ -3,18 +3,25 @@
 
 #include <iostream>
 #include <array>
-#include "galaxy.hpp"
+#include "body.hpp"
 
 template <int galaxy_count>
 struct Simulator
 {
-    std::array<Galaxy, galaxy_count> galaxies;
+    double step = 0;
+    std::array<Body, galaxy_count> galaxies;
 
     Simulator();
 
     void fill_galaxies();
 
-    GalaxyState fetch_user_config_console();
+    BodyState fetch_user_config_console();
+
+    void calculate_acceleration();
+
+    void leapfrog();
+
+    void integrate();
 };
 
 #include "simulator.tpp"

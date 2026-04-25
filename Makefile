@@ -9,7 +9,7 @@ else
 endif
 
 CXX = clang++
-CXXFLAGS = -O2 -Wall -Wextra -Wpedantic -std=c++17
+CXXFLAGS = -O2 -Wall -Wextra -Wpedantic -Werror -std=c++17
 SRC = *.cpp helper/*.cpp
 
 all: build run
