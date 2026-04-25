@@ -24,6 +24,6 @@ struct Simulator
     void integrate();
 };
 
-#include "simulator.tpp"
+#include "../src/simulator.tpp"
 
 #endif

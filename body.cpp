@@ -1,7 +1,13 @@
+<<<<<<<< HEAD:body.cpp
 #include "helper/vec3.hpp"
 #include "helper/console-input.hpp"
 #include "body.hpp"
 #include "parameters.hpp"
+========
+#include "vec3.hpp"
+#include "console-input.hpp"
+#include "galaxy.hpp"
+>>>>>>>> 13d009439f7edbd020a54ea4a9dcf4035e1cb2ac:src/galaxy.cpp
 #include <iostream>
 #include <vector>
 
