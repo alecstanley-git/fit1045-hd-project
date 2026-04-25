@@ -1,8 +1,9 @@
 #include <iostream>
 #include "simulator.hpp"
-#include "helper/console-input.hpp"
-#include "helper/constants.hpp"
+#include "console-input.hpp"
+#include "constants.hpp"
 #include "parameters.hpp"
+#include "visualiser.hpp"
 
 /*
 IMPLEMENTATION PLAN:

@@ -4,7 +4,7 @@
 #include <cmath> // for infinity
 #include "galaxy.hpp"
 #include "simulator.hpp"
-#include "helper/console-input.hpp"
+#include "console-input.hpp"
 
 template <int galaxy_count>
 Simulator<galaxy_count>::Simulator() {}

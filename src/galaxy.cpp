@@ -1,5 +1,5 @@
-#include "helper/vec3.hpp"
-#include "helper/console-input.hpp"
+#include "vec3.hpp"
+#include "console-input.hpp"
 #include "galaxy.hpp"
 #include <iostream>
 

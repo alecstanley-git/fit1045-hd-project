@@ -1,7 +1,7 @@
 #ifndef GALAXY_H
 #define GALAXY_H
 
-#include "helper/vec3.hpp"
+#include "vec3.hpp"
 
 // Stores configuration for a galaxy - passed into the Galaxy class
 // Default values must be used here to avoid errors if the galaxy is not initialised properly by the user
