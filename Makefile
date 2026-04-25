@@ -1,10 +1,10 @@
 ifeq ($(OS),Windows_NT)
 	# WINDOWS SETTINGS
-	TARGET = build/simulator.exe
+	TARGET = bin/simulator.exe
 	CLEAN_CMD = del /f /q
 else
 	# MAC / LINUX SETTINGS
-	TARGET = build/simulator
+	TARGET = bin/simulator
 	CLEAN_CMD = rm -f
 endif
 

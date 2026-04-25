@@ -5,7 +5,11 @@
 
 int open_glfw_window()
 {
-    if (~glfwInit()) return -1;
+    if (~glfwInit())
+    {
+        std::cout << "Failed to initialise glfw" << std::endl;
+        return -1;
+    }
 
     // Set OpenGL version for version 4.6
     glfwWindowHint(GLFW_VERSION_MAJOR, 4);
@@ -22,6 +26,8 @@ int open_glfw_window()
     }
 
     glfwMakeContextCurrent(window);
+
+    std::cout << "Window opened" << std::endl;
 
     return 0;
 }

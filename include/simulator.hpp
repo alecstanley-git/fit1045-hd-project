@@ -17,6 +17,6 @@ struct Simulator
     GalaxyState fetch_user_config_console();
 };
 
-#include "simulator.tpp"
+#include "../src/simulator.tpp"
 
 #endif

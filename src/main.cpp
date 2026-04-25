@@ -49,6 +49,8 @@ MenuOption menu()
 int main()
 {
     Simulator<num_galaxies> simulation;
+
+    open_glfw_window();
     
     MenuOption option;
 
