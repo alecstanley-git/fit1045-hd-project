@@ -3,7 +3,7 @@
 #include "console-input.hpp"
 #include "constants.hpp"
 #include "parameters.hpp"
-#include "visualiser.hpp"
+#include "visualiser.h"
 
 /*
 IMPLEMENTATION PLAN:
@@ -13,12 +13,9 @@ IMPLEMENTATION PLAN:
 [ ] Helper functions for acceleration, energy, and momentum
 [ ] Design the numerical integrator
   - Need to make important decisions on how the integrator will store data at each step
-[ ] Implement graphing logic with Raylib
-  - Raylib is an extremely lightweight and great for 3D visuals
-[ ] Move configuration from console to GUI using Dear Imgui library
-  - Dear Imgui can build interactive windows and sit on top of Raylib with sliders/buttons.
+[ ] Develop a graphical library to display plots and 3D visualisations of the data.
+[ ] Implement a dynamic time-step that changes based on how quickly the acceleration is changing, and also a damping parameter to ease extreme motion.
 
-** Creating my own OpenGL or Vulkan renderer is a path I am not willing to go down and is likely beyond the scope of the project requirements, this is where pre-existing libraries would be essential.
 */
 
 // Should separate these out only to wherever they're used, but for now this is fine.
@@ -50,34 +47,34 @@ MenuOption menu()
 
 int main()
 {
-    Simulator<num_galaxies> simulation;
+    // Simulator<num_galaxies> simulation;
 
-    open_glfw_window();
+    open_window();
     
-    MenuOption option;
+    // MenuOption option;
 
-    do
-    {
-        option = menu();
+    // do
+    // {
+    //     option = menu();
 
-        switch (option)
-        {
-        case INIT:
-            simulation.fill_galaxies();
-            break;
-        case PRINT:
-            for (int i = 0; i < (int)simulation.galaxies.size(); i++)
-            {
-                simulation.galaxies[i].print(i + 1);
-            }
-            break;
-        case RUN:
-            simulation.integrate();
-            break;
-        default:
-            break;
-        }
-    } while (option != QUIT);
+    //     switch (option)
+    //     {
+    //     case INIT:
+    //         simulation.fill_galaxies();
+    //         break;
+    //     case PRINT:
+    //         for (int i = 0; i < (int)simulation.galaxies.size(); i++)
+    //         {
+    //             simulation.galaxies[i].print(i + 1);
+    //         }
+    //         break;
+    //     case RUN:
+    //         simulation.integrate();
+    //         break;
+    //     default:
+    //         break;
+    //     }
+    // } while (option != QUIT);
 
     return 0;
 }

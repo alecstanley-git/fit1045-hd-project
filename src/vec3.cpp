@@ -1,5 +1,5 @@
 #include <cmath> // for sqrt
-#include "vec3.hpp"
+#include <vec3.hpp>
 
 /*
 -- Motivation for creating my own 3D vector class --
