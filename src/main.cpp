@@ -49,7 +49,9 @@ int main()
 {
     // Simulator<num_galaxies> simulation;
 
-    Window window(10, 10, "your mom");
+    Window window(800, 400, "your mom");
+
+    window.open();
     
     // MenuOption option;
 

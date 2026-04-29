@@ -8,7 +8,7 @@ class Window
     int width;
     int height;
     std::string title;
-    bool is_open;
+    bool is_open = false;
     void* handle; // This points to the os-specific window object - must be a pointer*.
 
 public:

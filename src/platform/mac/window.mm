@@ -26,7 +26,7 @@ int Window::open()
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
     // Define window position and size, starting from bottom left on Mac
-    NSRect frame = NSMakeRect(100, 100, 480, 270);
+    NSRect frame = NSMakeRect(100, 100, width, height);
 
     // Set some styles...
     NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable;
@@ -34,7 +34,7 @@ int Window::open()
     // Create the blank window
     NSWindow* window = [[NSWindow alloc] initWithContentRect:frame styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
 
-    [window setTitle:@"Blank Window"];
+    [window setTitle:@(title.c_str())];
 
     // Focus the window
     [window makeKeyAndOrderFront:nil];
@@ -44,6 +44,8 @@ int Window::open()
 
     // Start event loop to keep window open. The event loop also registers keyboard/mouse input each frame.
     [NSApp run];
+
+    is_open = true;
 
     return 0;
 }
