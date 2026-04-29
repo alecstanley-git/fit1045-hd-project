@@ -3,7 +3,7 @@
 #include "console-input.hpp"
 #include "constants.hpp"
 #include "parameters.hpp"
-#include "visualiser.h"
+#include "window.hpp"
 
 /*
 IMPLEMENTATION PLAN:
@@ -49,7 +49,7 @@ int main()
 {
     // Simulator<num_galaxies> simulation;
 
-    open_window();
+    Window window(10, 10, "your mom");
     
     // MenuOption option;
 

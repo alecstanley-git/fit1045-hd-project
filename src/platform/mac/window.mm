@@ -1,5 +1,7 @@
-#import "visualiser.h" // import is preferred for Obj-C
-#import <AppKit/AppKit.h>
+#ifdef __APPLE__
+#include "window.hpp"
+#include <iostream>
+#import <AppKit/AppKit.h> // import is preferred for Obj-C
 
 /*
 Managing a graphical interface is heavily OS-dependent. To manage this, I have written my code to be compatible with MacOS, as well as Windows 64-bit architecture, as these are the devices I will be running this application on.
@@ -10,7 +12,12 @@ Another note:
 This file is a .mm file, which allows us to mix standard C++ code and Objective-C code in the same file, which is a requirement for coding with Apple's proprietary Cocoa library.
 */
 
-int open_window()
+Window::Window(int _width, int _height, std::string _title)  : width(_width), height(_height), title(_title)
+{
+    
+}
+
+int Window::open()
 {
     // initialise global app instance
     [NSApplication sharedApplication];
@@ -40,3 +47,5 @@ int open_window()
 
     return 0;
 }
+
+#endif

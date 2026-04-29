@@ -1,22 +1,25 @@
+CXX = clang++
+CXXFLAGS = -O2 -Wall -Wextra -Wpedantic -std=c++17 -I"include" -L"lib"
+SRC = src/*.cpp
+
 ifeq ($(OS),Windows_NT)
 	# WINDOWS SETTINGS
 	TARGET = bin/simulator.exe
+	CXXFLAGS += -lgdi32 -luser32
+	SRC += src/platform/win/window.cpp
 	CLEAN_CMD = del /f /q
 else
 	# MAC / LINUX SETTINGS
 	TARGET = bin/simulator
-	EXTRA_FLAGS = -framework Cocoa
+	CXXFLAGS += -framework Cocoa
+	SRC += src/platform/mac/window.mm
 	CLEAN_CMD = rm -f
 endif
-
-CXX = clang++
-CXXFLAGS = -O2 -Wall -Wextra -Wpedantic -std=c++17 -I"include" -L"lib"
-SRC = src/*.cpp src/*.mm
 
 all: build run
 
 build:
-	$(CXX) $(SRC) $(CXXFLAGS) $(EXTRA_FLAGS) -o $(TARGET)
+	$(CXX) $(SRC) $(CXXFLAGS) -o $(TARGET)
 
 run:
 	./$(TARGET)
