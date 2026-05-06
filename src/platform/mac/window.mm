@@ -26,7 +26,7 @@ int Window::open()
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
     // Define window position and size, starting from bottom left on Mac
-    NSRect frame = NSMakeRect(100, 100, width, height);
+    NSRect frame = NSMakeRect(0, 0, width, height);
 
     // Set some styles...
     NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable;

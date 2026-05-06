@@ -49,7 +49,7 @@ int main()
 {
     Simulator<num_galaxies> simulation;
 
-    Window window(800, 400, "your mom");
+    Window window(800, 600, "Simulator");
 
     window.open();
     

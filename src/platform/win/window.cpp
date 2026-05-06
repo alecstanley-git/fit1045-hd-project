@@ -12,9 +12,8 @@
 The code in this file is mostly pulled directly from Microsoft's official Windows documentation
 */
 
-Window::Window(int _width, int _height, std::string _title)  : width(_width), height(_height), title(_title)
+Window::Window(int _width, int _height, std::string _title) : width(_width), height(_height), title(_title)
 {
-    
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -40,9 +39,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 /*
 Helper function to convert std::string type to a wide string literal used by the Win32 API
 */
-std::wstring ToWideString(const std::string& narrow)
+std::wstring ToWideString(const std::string &narrow)
 {
-    if (narrow.empty()) return L"";
+    if (narrow.empty())
+        return L"";
 
     // Get required size
     int size_needed = MultiByteToWideChar(CP_UTF8, 0, narrow.c_str(), (int)narrow.length(), NULL, 0);
@@ -73,10 +73,10 @@ int Window::open()
     HWND hwnd = CreateWindowEx(
         0,                            // Optional window styles
         CLASS_NAME,                   // The class
-        ToWideString(title).c_str(),        // Title
+        ToWideString(title).c_str(),  // Title
         WS_OVERLAPPEDWINDOW,          // Style (title bar, border, etc.)
         CW_USEDEFAULT, CW_USEDEFAULT, // Position x, y
-        width, height,                     // Size - width, height
+        width, height,                // Size - width, height
         NULL,                         // Parent window
         NULL,                         // Menu
         hInstance,                    // Instance handle
