@@ -47,36 +47,36 @@ MenuOption menu()
 
 int main()
 {
-    // Simulator<num_galaxies> simulation;
+    Simulator<num_galaxies> simulation;
 
     Window window(800, 400, "your mom");
 
     window.open();
     
-    // MenuOption option;
+    MenuOption option;
 
-    // do
-    // {
-    //     option = menu();
+    do
+    {
+        option = menu();
 
-    //     switch (option)
-    //     {
-    //     case INIT:
-    //         simulation.fill_galaxies();
-    //         break;
-    //     case PRINT:
-    //         for (int i = 0; i < (int)simulation.galaxies.size(); i++)
-    //         {
-    //             simulation.galaxies[i].print(i + 1);
-    //         }
-    //         break;
-    //     case RUN:
-    //         simulation.integrate();
-    //         break;
-    //     default:
-    //         break;
-    //     }
-    // } while (option != QUIT);
+        switch (option)
+        {
+        case INIT:
+            simulation.fill_galaxies();
+            break;
+        case PRINT:
+            for (int i = 0; i < (int)simulation.galaxies.size(); i++)
+            {
+                simulation.galaxies[i].print(i + 1);
+            }
+            break;
+        case RUN:
+            simulation.integrate();
+            break;
+        default:
+            break;
+        }
+    } while (option != QUIT);
 
     return 0;
 }
