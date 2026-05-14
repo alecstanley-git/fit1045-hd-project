@@ -79,11 +79,6 @@ Window::Window(int _width, int _height, std::string _title) : width(_width), hei
         NULL                          // Additional data
     );
 
-    if (hwnd == NULL)
-    {
-        return 1;
-    }
-
     // Make visible
     ShowWindow(hwnd, SW_SHOW);
 
@@ -96,6 +91,16 @@ Window::Window(int _width, int _height, std::string _title) : width(_width), hei
     }
 
     is_open = true;
+}
+
+void Window::clear_screen()
+{
+    std::cout << "TODO" << std::endl;
+}
+
+void Window::process_events()
+{
+    std::cout << "TODO" << std::endl;
 }
 
 #endif
