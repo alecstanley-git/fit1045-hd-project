@@ -11,7 +11,7 @@ ifeq ($(OS),Windows_NT)
 else
 	# MAC / LINUX SETTINGS
 	TARGET = bin/simulator
-	CXXFLAGS += -framework Cocoa
+	CXXFLAGS += -framework Cocoa -fobjc-arc
 	SRC += src/platform/mac/window.mm
 	CLEAN_CMD = rm -f
 endif

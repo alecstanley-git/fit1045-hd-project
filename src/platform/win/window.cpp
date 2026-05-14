@@ -12,10 +12,6 @@
 The code in this file is mostly pulled directly from Microsoft's official Windows documentation
 */
 
-Window::Window(int _width, int _height, std::string _title) : width(_width), height(_height), title(_title)
-{
-}
-
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
@@ -56,7 +52,7 @@ std::wstring ToWideString(const std::string &narrow)
     return wide;
 }
 
-int Window::open()
+Window::Window(int _width, int _height, std::string _title) : width(_width), height(_height), title(_title)
 {
     HINSTANCE hInstance = GetModuleHandle(NULL);
     const wchar_t CLASS_NAME[] = L"Sample Window Class";
@@ -100,7 +96,6 @@ int Window::open()
     }
 
     is_open = true;
-    return 0;
 }
 
 #endif

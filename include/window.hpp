@@ -3,18 +3,24 @@
 
 #include <iostream>
 
+enum Color
+{
+
+};
+
 class Window
 {
     int width;
     int height;
     std::string title;
     bool is_open = false;
-    void* handle; // This points to the os-specific window object - must be a pointer*.
+    void* _window; // This points to the os-specific window object - must be a pointer*.
 
 public:
     Window(int _width, int _height, std::string _title);
 
-    int open();
+    void process_events();
+    void clear_screen();
 };
 
 #endif

@@ -51,7 +51,8 @@ int main()
 
     Window window(800, 600, "Simulator");
 
-    window.open();
+    window.clear_screen();
+    window.process_events();
     
     MenuOption option;
 
@@ -78,5 +79,5 @@ int main()
         }
     } while (option != QUIT);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
