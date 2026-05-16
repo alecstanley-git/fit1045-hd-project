@@ -1,9 +1,12 @@
 #include <iostream>
+#include <chrono>
+#include <thread>
 #include "simulator.hpp"
 #include "console-input.hpp"
 #include "constants.hpp"
 #include "parameters.hpp"
 #include "window.hpp"
+#include "button.hpp"
 
 /*
 IMPLEMENTATION PLAN:
@@ -51,33 +54,70 @@ int main()
 
     Window window(800, 600, "Simulator");
 
-    window.clear_screen();
-    window.process_events();
-    
-    MenuOption option;
 
-    do
+    Button* initButton = window.add_button(100, 100, 80, 30, "Initialise");
+    Button* printButton = window.add_button(100, 200, 80, 30, "Print state");
+    Button* runButton = window.add_button(100, 300, 80, 30, "Run");
+    Button* quitButton = window.add_button(100, 400, 80, 30, "Quit");
+
+    while (window.is_running())
     {
-        option = menu();
+        window.process_events();
+        window.clear_screen(Color::White);
 
-        switch (option)
+        window.process_buttons();
+        if (initButton->is_pressed())
         {
-        case INIT:
             simulation.fill_galaxies();
-            break;
-        case PRINT:
+        }
+
+        if (printButton->is_pressed())
+        {
             for (int i = 0; i < (int)simulation.galaxies.size(); i++)
             {
                 simulation.galaxies[i].print(i + 1);
             }
-            break;
-        case RUN:
-            simulation.integrate();
-            break;
-        default:
-            break;
         }
-    } while (option != QUIT);
+
+        if (runButton->is_pressed())
+        {
+            simulation.integrate();
+        }
+
+        if (quitButton->is_pressed())
+        {
+            return EXIT_SUCCESS;
+        }
+
+        // ~16 milliseconds should hit roughly 60fps, and avoid maxing out the CPU
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    }
+
+    
+    // MenuOption option;
+
+    // do
+    // {
+    //     option = menu();
+
+    //     switch (option)
+    //     {
+    //     case INIT:
+    //         simulation.fill_galaxies();
+    //         break;
+    //     case PRINT:
+    //         for (int i = 0; i < (int)simulation.galaxies.size(); i++)
+    //         {
+    //             simulation.galaxies[i].print(i + 1);
+    //         }
+    //         break;
+    //     case RUN:
+    //         simulation.integrate();
+    //         break;
+    //     default:
+    //         break;
+    //     }
+    // } while (option != QUIT);
 
     return EXIT_SUCCESS;
 }

@@ -3,6 +3,7 @@
 #include <iostream>
 #import <AppKit/AppKit.h> // import is preferred for Obj-C
 #import <objc/runtime.h> // required for associating the private delegate
+#import <QuartzCore/QuartzCore.h>
 
 /*
 Managing a graphical interface is heavily OS-dependent. To manage this, I have written my code to be compatible with MacOS, as well as Windows 64-bit architecture, as these are the devices I will be running this application on.
@@ -25,6 +26,15 @@ Private delegate window class
 }
 
 @end
+
+static NSColor* convertColor(Color hexColor)
+{
+    CGFloat r = ((hexColor >> 24) & 0xFF) / 255.0;
+    CGFloat g = ((hexColor >> 16) & 0xFF) / 255.0;
+    CGFloat b = ((hexColor >> 8) & 0xFF) / 255.0;
+    CGFloat a = ((hexColor & 0xFF) & 0xFF) / 255.0;
+    return [NSColor colorWithDeviceRed:r green:g blue:b alpha:a];
+}
 
 Window::Window(int _width, int _height, std::string _title)  : width(_width), height(_height), title(_title)
 {
@@ -54,6 +64,9 @@ Window::Window(int _width, int _height, std::string _title)  : width(_width), he
         // Need to associate the delegate to the window object to stop clearing it from memory once this function is complete
         objc_setAssociatedObject(window, (__bridge const void *)(@"MacWindowDelegate"), delegate, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
+        // Enable core animation layers for the window
+        [[window contentView] setWantsLayer:YES];
+
         // Focus the window
         [window makeKeyAndOrderFront:nil];
 
@@ -80,22 +93,93 @@ void Window::process_events()
                                              dequeue:YES])) {
             [NSApp sendEvent:event];
         }
+
+        NSWindow* window = (__bridge NSWindow *)_window;
+        if (window)
+        {
+            NSPoint mouseLoc = [window mouseLocationOutsideOfEventStream];
+
+            mouse_position.x = static_cast<int>(mouseLoc.x);
+            mouse_position.y = height - static_cast<int>(mouseLoc.y);
+        }
         
         // Flush any UI updates
         [NSApp updateWindows];
     }
 }
 
-void Window::clear_screen()
+void Window::clear_screen(Color color)
 {
     @autoreleasepool {
         NSWindow* window = (__bridge NSWindow *)_window;
 
         if (window) {
-            [window setBackgroundColor:[NSColor redColor]];
-            std::cout << "hello?" << std::endl;
-            [window displayIfNeeded];
+            CALayer *layer = [[window contentView] layer];
+            layer.sublayers = nil;
+            layer.backgroundColor = [convertColor(color) CGColor];
         }
+    }
+}
+
+void Window::fill_rectangle(int x, int y, int w, int h, Color color)
+{
+    @autoreleasepool
+    {
+        NSWindow* window = (__bridge NSWindow *)_window;
+        
+        if (window)
+        {
+            CALayer *rectLayer = [CALayer layer];
+            rectLayer.frame = CGRectMake(x, height - y - h, w, h);
+            rectLayer.backgroundColor = [convertColor(color) CGColor];
+            
+            // This part is important because by default the system will try and smooth animation changes, but we want to show it straight away
+            [CATransaction begin];
+            [CATransaction setDisableActions:YES];
+
+            [[[window contentView] layer] addSublayer:rectLayer];
+
+            [CATransaction commit];
+        }
+    }
+}
+
+void Window::draw_text(const std::string& text, int x, int y, double size, Color color)
+{
+    @autoreleasepool
+    {
+        NSWindow* window = (__bridge NSWindow *)_window;
+        
+        if (window)
+        {
+            CATextLayer *textLayer = [CATextLayer layer];
+
+            textLayer.string = [NSString stringWithUTF8String:text.c_str()];
+            textLayer.fontSize = size;
+            textLayer.foregroundColor = [convertColor(color) CGColor];
+            textLayer.contentsScale = [window backingScaleFactor];
+
+            int box_width = 300;
+            int box_height = 50;
+
+            y = height - y - box_height;
+
+            textLayer.frame = CGRectMake(x, y, box_width, box_height);
+
+            [CATransaction begin];
+            [CATransaction setDisableActions:YES];
+            [[[window contentView] layer] addSublayer:textLayer];
+            [CATransaction commit];
+        }
+
+    }
+}
+
+bool Window::is_left_mouse_down() const
+{
+    @autoreleasepool
+    {
+        return ([NSEvent pressedMouseButtons] & 1) != 0;
     }
 }
 
