@@ -33,12 +33,15 @@ int main()
 
     Window window(800, 600, "Simulator");
 
-    window.load_font("Inter-VariableFont_opsz,wght.ttf");
+    window.load_font("Aboreto-Regular.ttf");
 
-    Button* initButton = window.add_button(100, 100, 80, 30, "Initialise");
-    Button* printButton = window.add_button(100, 200, 80, 30, "Print state");
-    Button* runButton = window.add_button(100, 300, 80, 30, "Run");
-    Button* quitButton = window.add_button(100, 400, 80, 30, "Quit");
+    const int BUTTON_WIDTH = 140;
+    const int BUTTON_HEIGHT = 40;
+
+    Button* initButton = window.add_button(100, 100, BUTTON_WIDTH, BUTTON_HEIGHT, "Initialise");
+    Button* printButton = window.add_button(100, 200, BUTTON_WIDTH, BUTTON_HEIGHT, "Print state");
+    Button* runButton = window.add_button(100, 300, BUTTON_WIDTH, BUTTON_HEIGHT, "Run");
+    Button* quitButton = window.add_button(100, 400, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
 
     while (window.is_running())
     {

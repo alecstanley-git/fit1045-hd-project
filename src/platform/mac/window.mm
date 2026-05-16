@@ -178,10 +178,15 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color)
             CALayer *rectLayer = [CALayer layer];
             rectLayer.frame = CGRectMake(x, height - y - h, w, h);
             rectLayer.backgroundColor = [convertColor(color) CGColor];
+            rectLayer.cornerRadius = 6.0;
+            rectLayer.shadowColor = [convertColor(Grey) CGColor];
             
             // This part is important because by default the system will try and smooth animation changes, but we want to show it straight away
             [CATransaction begin];
             [CATransaction setDisableActions:YES];
+            rectLayer.shadowOpacity = 0.3;  // Subtle idle glow
+            rectLayer.shadowRadius = 6.0;
+            rectLayer.shadowOffset = CGSizeZero; // Glowes outward evenly
 
             [[[window contentView] layer] addSublayer:rectLayer];
 
@@ -193,7 +198,7 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color)
 /*
 This does a similar thing to fill_rectangle but with text
 */
-void Window::draw_text(const std::string& text, int x, int y, double size, Color color)
+void Window::draw_text(const std::string& text, int x, int y, double size, Color color, int box_width, int box_height)
 {
     @autoreleasepool
     {
@@ -206,13 +211,11 @@ void Window::draw_text(const std::string& text, int x, int y, double size, Color
             textLayer.string = [NSString stringWithUTF8String:text.c_str()];
             textLayer.fontSize = size;
             textLayer.foregroundColor = [convertColor(color) CGColor];
+            textLayer.alignmentMode = kCAAlignmentCenter;
             textLayer.contentsScale = [window backingScaleFactor];
 
-            std::string font_name = "Inter-VariableFont_opsz,wght.ttf";
+            std::string font_name = "Aboreto-Regular";
             textLayer.font = (__bridge CFTypeRef)[NSString stringWithUTF8String:font_name.c_str()];
-
-            int box_width = 300;
-            int box_height = 50;
 
             y = height - y - box_height;
 

@@ -51,7 +51,7 @@ public:
 
     // Rendering methods
     void fill_rectangle(int x, int y, int width, int height, Color color);
-    void draw_text(const std::string &text, int x, int y, double size, Color color);
+    void draw_text(const std::string &text, int x, int y, double size, Color color, int box_width, int box_height);
     bool is_left_mouse_down() const;
     bool load_font(const std::string& file_path);
 
@@ -100,7 +100,7 @@ inline void Window::process_buttons()
             buttons[i]->update_state(mouse_position, false);
         }
         fill_rectangle(buttons[i]->x, buttons[i]->y, buttons[i]->width, buttons[i]->height, box_color);
-        draw_text(buttons[i]->text, buttons[i]->x+buttons[i]->width/10, buttons[i]->y, buttons[i]->width/4, text_color);
+        draw_text(buttons[i]->text, buttons[i]->x, buttons[i]->y+buttons[i]->height/4, 18, text_color, buttons[i]->width, buttons[i]->height);
     }
 }
 
