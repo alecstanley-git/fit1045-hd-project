@@ -4,6 +4,7 @@
 #import <AppKit/AppKit.h> // import is preferred for Obj-C
 #import <objc/runtime.h> // required for associating the private delegate
 #import <QuartzCore/QuartzCore.h>
+#import <CoreText/CoreText.h>
 
 /*
 Managing a graphical interface is heavily OS-dependent. To manage this, I have written my code to be compatible with MacOS, as well as Windows 64-bit architecture, as these are the devices I will be running this application on.
@@ -27,6 +28,10 @@ Private delegate window class
 
 @end
 
+/*
+The colour conversion to the NSColor object used by AppKit
+Uses bitwise shifting and comparing and then normalise between 0 and 1.
+*/
 static NSColor* convertColor(Color hexColor)
 {
     CGFloat r = ((hexColor >> 24) & 0xFF) / 255.0;
@@ -36,9 +41,14 @@ static NSColor* convertColor(Color hexColor)
     return [NSColor colorWithDeviceRed:r green:g blue:b alpha:a];
 }
 
+/*
+Default constructor
+Sourced mostly from https://www.electronjs.org/docs/latest/tutorial/native-code-and-electron-objc-macos
+*/
 Window::Window(int _width, int _height, std::string _title)  : width(_width), height(_height), title(_title)
 {
     // Encase everything in @autoreleasepool to manage memory for Obj-C blocks
+    // It means any objects created in this block will be deallocated afterwards, except returns
     @autoreleasepool {
         // initialise global app instance
         [NSApplication sharedApplication];
@@ -82,6 +92,35 @@ Window::Window(int _width, int _height, std::string _title)  : width(_width), he
     }
 }
 
+bool Window::load_font(const std::string& file_path)
+{
+    @autoreleasepool
+    {
+        NSString *path = [NSString stringWithUTF8String:file_path.c_str()];
+        NSURL *fontURL = [NSURL fileURLWithPath:path];
+
+        CFErrorRef error = NULL;
+
+        bool success = CTFontManagerRegisterFontsForURL((__bridge CFURLRef)fontURL, kCTFontManagerScopeProcess, &error);
+
+        if (!success)
+        {
+            if (error)
+            {
+                CFStringRef errorDescription = CFErrorCopyDescription(error);
+                std::cerr << "Failed to load font" << std::endl;
+                CFRelease(errorDescription);
+            }
+            return false;
+        }
+        return true;
+    }
+}
+
+/*
+This basically picks up all operating system events and sends them to the NSApp object, including allowing the window to close properly
+I added mouse tracking to this method since the nature of my program requires it every frame anyway.
+*/
 void Window::process_events()
 {
     @autoreleasepool {
@@ -108,6 +147,10 @@ void Window::process_events()
     }
 }
 
+/*
+The layering functionality in AppKit allows us to build virtual 'layers' on top of the window.
+Clear screen has us delete all the layers and set a background color.
+*/
 void Window::clear_screen(Color color)
 {
     @autoreleasepool {
@@ -121,6 +164,9 @@ void Window::clear_screen(Color color)
     }
 }
 
+/*
+This method needs to create a new layer and put a rectangle on it, then push the layer to the screen
+*/
 void Window::fill_rectangle(int x, int y, int w, int h, Color color)
 {
     @autoreleasepool
@@ -144,6 +190,9 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color)
     }
 }
 
+/*
+This does a similar thing to fill_rectangle but with text
+*/
 void Window::draw_text(const std::string& text, int x, int y, double size, Color color)
 {
     @autoreleasepool
@@ -158,6 +207,9 @@ void Window::draw_text(const std::string& text, int x, int y, double size, Color
             textLayer.fontSize = size;
             textLayer.foregroundColor = [convertColor(color) CGColor];
             textLayer.contentsScale = [window backingScaleFactor];
+
+            std::string font_name = "Inter-VariableFont_opsz,wght.ttf";
+            textLayer.font = (__bridge CFTypeRef)[NSString stringWithUTF8String:font_name.c_str()];
 
             int box_width = 300;
             int box_height = 50;

@@ -6,6 +6,10 @@
 #include "dynamic-array.hpp"
 #include "point2d.hpp"
 
+/*
+This enum stores colour information in hexadecimal format.
+Both Windows and Mac store colour differently. This format is easy to translate in the OS-specific methods.
+*/
 enum Color : uint64_t
 {
     Red = 0xFF0000FF,
@@ -17,6 +21,10 @@ enum Color : uint64_t
     White = 0xFFFFFFFF
 };
 
+/*
+Main window class.
+Stores state information about the window object.
+*/
 class Window
 {
     int width;
@@ -27,8 +35,13 @@ class Window
     void *_window; // This points to the os-specific window object - must be a pointer*.
 
 public:
+    // The buttons should be a publicly accessible field - they are just pointers to the structs
     dynamic_array<Button*> buttons;
 
+    /*
+    Default constructor
+    TODO - @params
+    */
     Window(int _width, int _height, std::string _title);
 
     // Basic window management methods
@@ -40,6 +53,7 @@ public:
     void fill_rectangle(int x, int y, int width, int height, Color color);
     void draw_text(const std::string &text, int x, int y, double size, Color color);
     bool is_left_mouse_down() const;
+    bool load_font(const std::string& file_path);
 
     // High-level methods
     Button* add_button(int x, int y, int width, int height, std::string text);

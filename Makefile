@@ -11,7 +11,7 @@ ifeq ($(OS),Windows_NT)
 else
 	# MAC / LINUX SETTINGS
 	TARGET = bin/simulator
-	CXXFLAGS += -framework Cocoa -fobjc-arc -framework QuartzCore
+	CXXFLAGS += -framework Cocoa -fobjc-arc -framework QuartzCore -framework CoreText
 	SRC += src/platform/mac/window.mm
 	CLEAN_CMD = rm -f
 endif
