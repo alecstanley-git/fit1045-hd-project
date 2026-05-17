@@ -30,6 +30,8 @@ using namespace std;
 int main()
 {
     Simulator<num_galaxies> simulation;
+    dynamic_array<double> x;
+    dynamic_array<double> y;
 
     Window window(800, 600, "Simulator");
 
@@ -40,8 +42,9 @@ int main()
 
     Button* initButton = window.add_button(100, 100, BUTTON_WIDTH, BUTTON_HEIGHT, "Initialise");
     Button* printButton = window.add_button(100, 200, BUTTON_WIDTH, BUTTON_HEIGHT, "Print state");
-    Button* runButton = window.add_button(100, 300, BUTTON_WIDTH, BUTTON_HEIGHT, "Run");
-    Button* quitButton = window.add_button(100, 400, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
+    Button* stepButton = window.add_button(100, 300, BUTTON_WIDTH, BUTTON_HEIGHT, "Step");
+    Button* runButton = window.add_button(100, 400, BUTTON_WIDTH, BUTTON_HEIGHT, "Run all");
+    Button* quitButton = window.add_button(100, 500, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
 
     while (window.is_running())
     {
@@ -50,28 +53,47 @@ int main()
 
         window.process_buttons();
         
-        if (initButton->is_pressed())
+        if (initButton->state == CLICKED)
         {
             simulation.fill_galaxies();
         }
 
-        if (printButton->is_pressed())
+        if (printButton->state == CLICKED)
         {
-            for (int i = 0; i < (int)simulation.galaxies.size(); i++)
+            simulation.print_all_galaxies();
+        }
+
+        if (stepButton->state == CLICKED)
+        {
+            simulation.leapfrog();
+            simulation.print_all_galaxies();
+            for (int i = 0; i < num_galaxies; i++)
             {
-                simulation.galaxies[i].print(i + 1);
+                x.add(simulation.galaxies[i].data.position.x);
+                y.add(simulation.galaxies[i].data.position.y);
             }
         }
 
-        if (runButton->is_pressed())
+        if (runButton->state == CLICKED)
         {
-            simulation.integrate();
+            while (simulation.step < (int)(sim_time/time_step))
+            {
+                simulation.leapfrog();
+                simulation.print_all_galaxies();
+                for (int i = 0; i < num_galaxies; i++)
+                {
+                    x.add(simulation.galaxies[i].data.position.x);
+                    y.add(simulation.galaxies[i].data.position.y);
+                }
+            }
         }
 
-        if (quitButton->is_pressed())
+        if (quitButton->state == CLICKED)
         {
             return EXIT_SUCCESS;
         }
+
+        window.plot(x, y, 300, 100, 1, "x", "y", "X-Y Simulation Projection");
 
         // ~16 milliseconds should hit roughly 60fps, and avoid maxing out the CPU
         std::this_thread::sleep_for(std::chrono::milliseconds(16));

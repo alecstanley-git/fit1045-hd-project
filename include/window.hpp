@@ -33,10 +33,14 @@ class Window
     bool is_open = false;
     Point2D mouse_position;
     void *_window; // This points to the os-specific window object - must be a pointer*.
+    bool is_mouse_down = false;
+    bool was_mouse_down = false;
+
+    void setup_mouse_listeners();
 
 public:
     // The buttons should be a publicly accessible field - they are just pointers to the structs
-    dynamic_array<Button*> buttons;
+    dynamic_array<Button *> buttons;
 
     /*
     Default constructor
@@ -50,14 +54,15 @@ public:
     bool is_running();
 
     // Rendering methods
-    void fill_rectangle(int x, int y, int width, int height, Color color);
+    void fill_rectangle(int x, int y, int width, int height, Color color, bool is_button = false);
+    void fill_circle(int x, int y, int r, Color color);
     void draw_text(const std::string &text, int x, int y, double size, Color color, int box_width, int box_height);
-    bool is_left_mouse_down() const;
-    bool load_font(const std::string& file_path);
+    bool load_font(const std::string &file_path);
 
     // High-level methods
-    Button* add_button(int x, int y, int width, int height, std::string text);
+    Button *add_button(int x, int y, int width, int height, std::string text);
     void process_buttons();
+    void plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title);
 };
 
 inline bool Window::is_running()
@@ -65,9 +70,9 @@ inline bool Window::is_running()
     return is_open;
 }
 
-inline Button* Window::add_button(int x, int y, int w, int h, std::string text)
+inline Button *Window::add_button(int x, int y, int w, int h, std::string text)
 {
-    Button* ptr = new Button(x, y, w, h, text);
+    Button *ptr = new Button(x, y, w, h, text);
     buttons.add(ptr);
     return ptr;
 }
@@ -80,27 +85,91 @@ inline void Window::process_buttons()
     {
         if (buttons[i]->is_hovering(mouse_position))
         {
-            if (is_left_mouse_down())
+            if (is_mouse_down)
             {
+                if (was_mouse_down)
+                {
+                    buttons[i]->state = HELD;
+                }
+                else if (!was_mouse_down)
+                {
+                    buttons[i]->state = CLICKED;
+                    was_mouse_down = true;
+                }
                 box_color = Blue;
                 text_color = White;
-                buttons[i]->update_state(mouse_position, true);
             }
             else
             {
                 box_color = LightGrey;
                 text_color = Black;
-                buttons[i]->update_state(mouse_position, false);
+                buttons[i]->state = HOVERING;
+                was_mouse_down = false;
             }
         }
         else
         {
             box_color = Grey;
             text_color = White;
-            buttons[i]->update_state(mouse_position, false);
+            buttons[i]->state = IDLE;
         }
-        fill_rectangle(buttons[i]->x, buttons[i]->y, buttons[i]->width, buttons[i]->height, box_color);
-        draw_text(buttons[i]->text, buttons[i]->x, buttons[i]->y+buttons[i]->height/4, 18, text_color, buttons[i]->width, buttons[i]->height);
+        fill_rectangle(buttons[i]->x, buttons[i]->y, buttons[i]->width, buttons[i]->height, box_color, true);
+        draw_text(buttons[i]->text, buttons[i]->x, buttons[i]->y + buttons[i]->height / 4, 18, text_color, buttons[i]->width, buttons[i]->height);
+    }
+}
+
+inline void Window::plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title)
+{
+    if (x_data.length() != y_data.length())
+        return;
+
+    // PARAMETERS
+    int thickness = 1;
+    int point_size = 2;
+    Color point_color = Blue;
+    double padding_multiplier = 0.1; // 0.1 corresponds to 10% margins
+
+    int scaled_width = (int)(scale * 400);
+    int scaled_height = (int)(scale * 300);
+    fill_rectangle(x, y + scaled_height - thickness, scaled_width, thickness, Black);
+    fill_rectangle(x, y, thickness, scaled_height, Black);
+
+    draw_text(title, x, y - 20, 18, Black, scaled_width, scaled_height);
+    draw_text(x_label, x, y + scaled_height + 10, 18, Black, scaled_width, scaled_height);
+    draw_text(y_label, x - 20, y, 18, Black, 20, scaled_height);
+
+    // Defining the screen space from the data space
+    dynamic_array<int> x_data_screen;
+    dynamic_array<int> y_data_screen;
+
+    double x_range;
+    double y_range;
+
+    double x_min = x_data.min();
+    double x_max = x_data.max();
+    x_range = (x_min == x_max) ? 1.0 : (x_max - x_min);
+
+    double y_min = y_data.min();
+    double y_max = y_data.max();
+    y_range = (y_min == y_max) ? 1.0 : (y_max - y_min);
+
+    double x_padding = scaled_width * padding_multiplier;
+    double y_padding = scaled_height * padding_multiplier;
+
+    double drawable_width = scaled_width - (2 * x_padding);
+    double drawable_height = scaled_height - (2 * y_padding);
+
+    // Combined loop
+    for (int i = 0; i < x_data.length(); i++)
+    {
+        // Calculate and store screen coordinates (with rounding)
+        int x_point = static_cast<int>(std::round(x_padding + (x_data[i] - x_min) / x_range * drawable_width));
+        int y_point = static_cast<int>(std::round(scaled_height - y_padding - (y_data[i] - y_min) / y_range * drawable_height));
+
+        x_data_screen.add(x_point);
+        y_data_screen.add(y_point);
+
+        fill_circle(x + x_point, y + y_point, point_size, point_color);
     }
 }
 

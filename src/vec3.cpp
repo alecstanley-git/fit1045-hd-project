@@ -21,6 +21,14 @@ Vec3 Vec3::operator+(const Vec3& other) const
     return {x + other.x, y + other.y, z + other.z};
 }
 
+Vec3 &Vec3::operator+=(const Vec3 &other)
+{
+    x += other.x;
+    y += other.y;
+    z += other.z;
+    return *this;
+}
+
 // Vec3 - Vec3 - element-by-element
 Vec3 Vec3::operator-(const Vec3& other) const
 {
@@ -48,9 +56,11 @@ double Vec3::magnitude() const
 // Normal/unit vector (vector / magnitude)
 Vec3 Vec3::normal() const
 {   
-    if (magnitude() != 0.0)
+    double mag = magnitude();
+
+    if (mag > 0.0)
     {
-        return {x / magnitude(), y / magnitude(), z / magnitude()};
+        return {x / mag, y / mag, z / mag};
     }
     else
     {

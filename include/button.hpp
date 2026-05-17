@@ -12,7 +12,8 @@ enum ButtonState
 {
     IDLE,
     HOVERING,
-    PRESSED
+    HELD,
+    CLICKED
 };
 
 /*
@@ -40,51 +41,12 @@ struct Button
     TODO
     */
     bool is_hovering(Point2D &mouse_position) const;
-
-    /*
-    TODO
-    */
-    bool is_pressed() const;
-
-    /*
-    TODO
-    */
-    void update_state(Point2D &mouse_position, bool mouse_pressed);
 };
 
 inline bool Button::is_hovering(Point2D &mouse_position) const
 {
     return (mouse_position.x >= x && mouse_position.x <= x + width &&
             mouse_position.y >= y && mouse_position.y <= y + height);
-}
-
-inline bool Button::is_pressed() const
-{
-    if (state == PRESSED)
-    {
-        return true;
-    }
-    return false;
-}
-
-// State modifier function
-inline void Button::update_state(Point2D &mouse_position, bool mouse_pressed)
-{
-    if (is_hovering(mouse_position))
-    {
-        if (mouse_pressed)
-        {
-            state = PRESSED;
-        }
-        else
-        {
-            state = HOVERING;
-        }
-    }
-    else
-    {
-        state = IDLE;
-    }
 }
 
 #endif

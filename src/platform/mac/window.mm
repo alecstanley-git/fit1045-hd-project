@@ -90,6 +90,26 @@ Window::Window(int _width, int _height, std::string _title)  : width(_width), he
         is_open = true;
         _window = (__bridge_retained void *)window; // Assign the pointer to the window class
     }
+    setup_mouse_listeners();
+}
+
+// Run this once during your window/library initialization
+void Window::setup_mouse_listeners()
+{
+    @autoreleasepool
+    {
+        // Listen for Left Mouse Down
+        [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskLeftMouseDown handler:^NSEvent * _Nullable(NSEvent * _Nonnull event) {
+            this->is_mouse_down = true;
+            return event;
+        }];
+
+        // Listen for Left Mouse Up (The "Lifted" state)
+        [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskLeftMouseUp handler:^NSEvent * _Nullable(NSEvent * _Nonnull event) {
+            this->is_mouse_down = false;
+            return event;
+        }];
+    }
 }
 
 bool Window::load_font(const std::string& file_path)
@@ -167,7 +187,7 @@ void Window::clear_screen(Color color)
 /*
 This method needs to create a new layer and put a rectangle on it, then push the layer to the screen
 */
-void Window::fill_rectangle(int x, int y, int w, int h, Color color)
+void Window::fill_rectangle(int x, int y, int w, int h, Color color, bool is_button)
 {
     @autoreleasepool
     {
@@ -178,17 +198,47 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color)
             CALayer *rectLayer = [CALayer layer];
             rectLayer.frame = CGRectMake(x, height - y - h, w, h);
             rectLayer.backgroundColor = [convertColor(color) CGColor];
-            rectLayer.cornerRadius = 6.0;
-            rectLayer.shadowColor = [convertColor(Grey) CGColor];
+
+            if (is_button)
+                {
+                rectLayer.cornerRadius = 6.0;
+                rectLayer.shadowColor = [convertColor(Grey) CGColor];
+                rectLayer.shadowOpacity = 0.3;  // Subtle idle glow
+                rectLayer.shadowRadius = 6.0;
+                rectLayer.shadowOffset = CGSizeZero; // Glowes outward evenly
+            }
             
             // This part is important because by default the system will try and smooth animation changes, but we want to show it straight away
             [CATransaction begin];
             [CATransaction setDisableActions:YES];
-            rectLayer.shadowOpacity = 0.3;  // Subtle idle glow
-            rectLayer.shadowRadius = 6.0;
-            rectLayer.shadowOffset = CGSizeZero; // Glowes outward evenly
 
             [[[window contentView] layer] addSublayer:rectLayer];
+
+            [CATransaction commit];
+        }
+    }
+}
+
+void Window::fill_circle(int x, int y, int r, Color color)
+{
+    @autoreleasepool
+    {
+        NSWindow* window = (__bridge NSWindow *)_window;
+        
+        if (window)
+        {
+            CAShapeLayer *circleLayer = [CAShapeLayer layer];
+            CGRect bounding_rect = CGRectMake(x - r, height - y + r, 2*r, 2*r);
+
+            CGPathRef path = CGPathCreateWithEllipseInRect(bounding_rect, NULL);
+            circleLayer.path = path;
+            CGPathRelease(path);
+            circleLayer.fillColor = [convertColor(color) CGColor];
+
+            [CATransaction begin];
+            [CATransaction setDisableActions:YES];
+
+            [[[window contentView] layer] addSublayer:circleLayer];
 
             [CATransaction commit];
         }
@@ -227,14 +277,6 @@ void Window::draw_text(const std::string& text, int x, int y, double size, Color
             [CATransaction commit];
         }
 
-    }
-}
-
-bool Window::is_left_mouse_down() const
-{
-    @autoreleasepool
-    {
-        return ([NSEvent pressedMouseButtons] & 1) != 0;
     }
 }
 

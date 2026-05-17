@@ -11,6 +11,9 @@ struct Vec3
     // Vec3 + Vec3 - should add element-by-element
     Vec3 operator+(const Vec3& other) const;
 
+    // Vec3 += Vec 3 - should just call the adder
+    Vec3& operator+=(const Vec3& other);
+
     // Vec3 - Vec3 - element-by-element
     Vec3 operator-(const Vec3& other) const;
 

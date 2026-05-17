@@ -224,6 +224,38 @@ public:
             add(value);
         }
     }
+
+    template <typename U = T, typename = std::enable_if_t<std::is_same<U, double>::value>>
+    double min() const
+    {
+        if (_size == 0)
+            return 0.0;
+        double minimum = data[0];
+        for (int i = 0; i < length(); i++)
+        {
+            if (data[i] < minimum)
+            {
+                minimum = data[i];
+            }
+        }
+        return minimum;
+    }
+
+    template <typename U = T, typename = std::enable_if_t<std::is_same<U, double>::value>>
+    double max() const
+    {
+        if (_size == 0)
+            return 0.0;
+        double maximum = data[0];
+        for (int i = 0; i < length(); i++)
+        {
+            if (data[i] > maximum)
+            {
+                maximum = data[i];
+            }
+        }
+        return maximum;
+    }
 };
 
 #endif
