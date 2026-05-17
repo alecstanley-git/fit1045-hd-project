@@ -64,7 +64,8 @@ public:
     // High-level methods
     Button *add_button(int x, int y, int width, int height, std::string text);
     void process_buttons();
-    void plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title);
+    void plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title, double x_min, double x_max,
+              double y_min, double y_max);
 };
 
 inline Window::~Window()
@@ -129,7 +130,16 @@ inline void Window::process_buttons()
     }
 }
 
-inline void Window::plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title)
+inline void Window::plot(
+    const dynamic_array<double> &x_data,
+    const dynamic_array<double> &y_data,
+    int x, int y,
+    double scale,
+    const std::string x_label,
+    const std::string y_label,
+    const std::string title,
+    double x_min, double x_max,
+    double y_min, double y_max)
 {
     if (x_data.length() != y_data.length())
         return;
@@ -141,7 +151,7 @@ inline void Window::plot(const dynamic_array<double> &x_data, const dynamic_arra
     double padding_multiplier = 0.1; // 0.1 corresponds to 10% margins
 
     int scaled_width = (int)(scale * 400);
-    int scaled_height = (int)(scale * 300);
+    int scaled_height = (int)(scale * 400);
     fill_rectangle(x, y + scaled_height - thickness, scaled_width, thickness, Black);
     fill_rectangle(x, y, thickness, scaled_height, Black);
 
@@ -156,12 +166,8 @@ inline void Window::plot(const dynamic_array<double> &x_data, const dynamic_arra
     double x_range;
     double y_range;
 
-    double x_min = x_data.min();
-    double x_max = x_data.max();
     x_range = (x_min == x_max) ? 1.0 : (x_max - x_min);
 
-    double y_min = y_data.min();
-    double y_max = y_data.max();
     y_range = (y_min == y_max) ? 1.0 : (y_max - y_min);
 
     double x_padding = scaled_width * padding_multiplier;
