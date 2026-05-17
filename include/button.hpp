@@ -41,12 +41,39 @@ struct Button
     TODO
     */
     bool is_hovering(Point2D &mouse_position) const;
+
+    bool is_clicked();
+    bool is_held();
 };
 
 inline bool Button::is_hovering(Point2D &mouse_position) const
 {
     return (mouse_position.x >= x && mouse_position.x <= x + width &&
             mouse_position.y >= y && mouse_position.y <= y + height);
+}
+
+inline bool Button::is_clicked()
+{
+    if (state == CLICKED)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+inline bool Button::is_held()
+{
+    if (state == HELD)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 #endif

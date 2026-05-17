@@ -53,17 +53,17 @@ int main()
 
         window.process_buttons();
         
-        if (initButton->state == CLICKED)
+        if (initButton->is_clicked())
         {
             simulation.fill_galaxies();
         }
 
-        if (printButton->state == CLICKED)
+        if (printButton->is_clicked())
         {
             simulation.print_all_galaxies();
         }
 
-        if (stepButton->state == CLICKED)
+        if (stepButton->is_clicked())
         {
             simulation.leapfrog();
             simulation.print_all_galaxies();
@@ -74,7 +74,7 @@ int main()
             }
         }
 
-        if (runButton->state == CLICKED)
+        if (runButton->is_clicked())
         {
             while (simulation.step < (int)(sim_time/time_step))
             {

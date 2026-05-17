@@ -48,6 +48,8 @@ public:
     */
     Window(int _width, int _height, std::string _title);
 
+    ~Window();
+
     // Basic window management methods
     void process_events();
     void clear_screen(Color color);
@@ -64,6 +66,15 @@ public:
     void process_buttons();
     void plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title);
 };
+
+inline Window::~Window()
+{
+    for (int i = 0; i < buttons.length(); i++)
+    {
+        delete buttons[i];
+        buttons.remove(i);
+    }
+}
 
 inline bool Window::is_running()
 {
