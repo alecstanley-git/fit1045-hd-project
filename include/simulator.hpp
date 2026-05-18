@@ -9,14 +9,15 @@
 #include "simulator.hpp"
 #include "console-input.hpp"
 #include "parameters.hpp"
+#include "dynamic-array.hpp"
 
 using namespace Parameters;
 
-template <int galaxy_count>
 struct Simulator
 {
+    int n_bodies = 2;
     double step = 0;
-    std::array<Body, galaxy_count> galaxies;
+    dynamic_array<Body> galaxies;
 
     Simulator();
 
@@ -31,27 +32,28 @@ struct Simulator
     void leapfrog();
 };
 
-template <int galaxy_count>
-Simulator<galaxy_count>::Simulator() {}
+Simulator::Simulator() {}
 
-template <int galaxy_count>
-void Simulator<galaxy_count>::fill_galaxies()
+void Simulator::fill_galaxies()
 {
-    for (int i = 0; i < galaxy_count; i++)
+    std::cout << std::endl;
+    n_bodies = read_integer_range("How many bodies in the simulation? ", 1, INT_MAX);
+    std::cout << std::endl;
+
+    for (int i = 0; i < n_bodies; i++)
     {
         std::cout << std::endl
                   << "[-] Initialising galaxy " << i + 1 << "..." << std::endl
                   << std::endl;
         BodyState params = fetch_user_config_console();
         Body new_galaxy(params);
-        galaxies[i] = new_galaxy;
+        galaxies.add(new_galaxy);
     }
     std::cout << std::endl
               << "[-] All galaxies initialised, ready to commence." << std::endl;
 }
 
-template <int galaxy_count>
-BodyState Simulator<galaxy_count>::fetch_user_config_console()
+BodyState Simulator::fetch_user_config_console()
 {
     BodyState config;
     config.mass = read_double_range("   Enter mass (solar masses): ", 0, INFINITY, false);
@@ -84,33 +86,31 @@ BodyState Simulator<galaxy_count>::fetch_user_config_console()
     return config;
 }
 
-template <int galaxy_count>
-inline void Simulator<galaxy_count>::print_all_galaxies()
+inline void Simulator::print_all_galaxies()
 {
-    for (int i = 0; i < (int)galaxies.size(); i++)
+    for (int i = 0; i < (int)galaxies.length(); i++)
     {
         galaxies[i].print(i + 1);
     }
 }
 
-template <int galaxy_count>
-inline void Simulator<galaxy_count>::calculate_acceleration()
+inline void Simulator::calculate_acceleration()
 {
     Vec3 dx{};
     double distance_sq{};
     double distance{};
 
-    for (int i = 0; i < galaxy_count; i++)
+    for (int i = 0; i < n_bodies; i++)
     {
         galaxies[i].data.acceleration = Vec3{0.0, 0.0, 0.0};
-        for (int j = 0; j < galaxy_count; j++)
+        for (int j = 0; j < n_bodies; j++)
         {
             if (i != j)
             {
                 dx = galaxies[j].data.position - galaxies[i].data.position;
 
                 // Softened distance
-                distance_sq = dx.x * dx.x + dx.y * dx.y + dx.z * dx.z + softening*softening;
+                distance_sq = dx.x * dx.x + dx.y * dx.y + dx.z * dx.z + softening * softening;
                 distance = std::sqrt(distance_sq);
 
                 galaxies[i].data.acceleration += dx * (galaxies[j].data.mass / (distance * distance_sq));
@@ -119,16 +119,15 @@ inline void Simulator<galaxy_count>::calculate_acceleration()
     }
 }
 
-template <int galaxy_count>
-inline void Simulator<galaxy_count>::leapfrog()
+inline void Simulator::leapfrog()
 {
-    for (int i = 0; i < galaxy_count; i++)
+    for (int i = 0; i < n_bodies; i++)
     {
         galaxies[i].data.velocity = galaxies[i].data.velocity + galaxies[i].data.acceleration * (0.5 * time_step);
         galaxies[i].data.position = galaxies[i].data.position + galaxies[i].data.velocity * time_step;
     }
     calculate_acceleration();
-    for (int i = 0; i < galaxy_count; i++)
+    for (int i = 0; i < n_bodies; i++)
     {
         galaxies[i].data.velocity = galaxies[i].data.velocity + galaxies[i].data.acceleration * (0.5 * time_step);
 

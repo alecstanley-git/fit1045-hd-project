@@ -64,8 +64,7 @@ public:
     // High-level methods
     Button *add_button(int x, int y, int width, int height, std::string text);
     void process_buttons();
-    void plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title, double x_min, double x_max,
-              double y_min, double y_max);
+    void plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title, double x_min, double x_max, double y_min, double y_max);
 };
 
 inline Window::~Window()
