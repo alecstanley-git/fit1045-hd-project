@@ -15,7 +15,7 @@ using namespace Parameters;
 
 struct Simulator
 {
-    int n_bodies = 2;
+    int n_bodies = 0;
     double step = 0;
     dynamic_array<Body> galaxies;
 
