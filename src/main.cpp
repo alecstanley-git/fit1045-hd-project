@@ -43,102 +43,140 @@ using namespace Constants;
 using namespace Parameters;
 using namespace std;
 
-int main()
+enum MainMenu
 {
-    Simulator simulation;
-    bool sim_running = false;
-    bool step_this_frame = false;
-    dynamic_array<double> *x = new dynamic_array<double>;
-    dynamic_array<double> *y = new dynamic_array<double>;
+    INITIALISE,
+    PRINT,
+    STEP,
+    TOGGLE,
+    QUIT,
+    NO_CHOICE
+};
 
-    Window window(800, 600, "Simulator");
+Simulator *initialise_simulation(Simulator *sim)
+{
+    delete sim;
+    Simulator *new_sim = new Simulator();
+    new_sim->fill_galaxies();
+    return new_sim;
+}
 
-    window.load_font("Aboreto-Regular.ttf");
+void draw_window(Window &window, const Simulator *sim)
+{
+    window.clear_screen(BACKGROUND_COLOR);
 
+    if (sim)
+    {
+        window.draw_text(std::to_string((int)sim->current_step) + "/" + std::to_string((int)(SIM_TIME / TIME_STEP)), 10, 10, 12, Black, 100, 30);
+
+        dynamic_array<double> x, y;
+        for (int i = 0; i < sim->galaxies.length(); i++)
+        {
+            x.add(sim->galaxies[i].data.position.x);
+            y.add(sim->galaxies[i].data.position.y);
+        }
+        window.plot(x, y, 300, 100, 1, "x", "y", "Body Positions (x-y projection)", -1.5, 1.5, -1.5, 1.5);
+    }
+}
+
+void create_buttons(Window &window)
+{
     const int BUTTON_WIDTH = 140;
     const int BUTTON_HEIGHT = 40;
 
-    Button *initButton = window.add_button(100, 100, BUTTON_WIDTH, BUTTON_HEIGHT, "Initialise");
-    Button *printButton = window.add_button(100, 200, BUTTON_WIDTH, BUTTON_HEIGHT, "Print state");
-    Button *stepButton = window.add_button(100, 300, BUTTON_WIDTH, BUTTON_HEIGHT, "Step");
-    Button *runButton = window.add_button(100, 400, BUTTON_WIDTH, BUTTON_HEIGHT, "Run/Stop");
-    Button *quitButton = window.add_button(100, 500, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
+    window.add_button(100, 100, BUTTON_WIDTH, BUTTON_HEIGHT, "Initialise");
+    window.add_button(100, 200, BUTTON_WIDTH, BUTTON_HEIGHT, "Print state");
+    window.add_button(100, 300, BUTTON_WIDTH, BUTTON_HEIGHT, "Step");
+    window.add_button(100, 400, BUTTON_WIDTH, BUTTON_HEIGHT, "Run/Stop");
+    window.add_button(100, 500, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
+    window.add_button(100, 200, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
+}
+
+MainMenu main_menu(Window &window, const Simulator *sim)
+{
+    dynamic_array<int> *indices = new dynamic_array<int>;
+    if (sim)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            indices->add(i);
+        }
+    }
+    else
+    {
+        indices->add(0);
+        indices->add(5);
+    }
+    window.process_buttons(indices);
+    delete indices;
+
+    if (window.buttons[0]->is_clicked())
+        return INITIALISE;
+    if (window.buttons[1]->is_clicked())
+        return PRINT;
+    if (window.buttons[2]->is_clicked())
+        return STEP;
+    if (window.buttons[3]->is_clicked())
+        return TOGGLE;
+    if (window.buttons[4]->is_clicked() || window.buttons[5]->is_clicked())
+        return QUIT;
+
+    return NO_CHOICE;
+}
+
+void update_window(Window &window, double fps)
+{
+    window.process_events();
+    int ms = std::floor(1000.0 / fps);
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+
+int main()
+{
+    Window window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME);
+    create_buttons(window);
+
+    Simulator *sim = nullptr; // Initialise an empty pointer
 
     while (window.is_running())
     {
-        step_this_frame = false;
-        window.process_events();
-        window.clear_screen(Color::White);
+        draw_window(window, sim);
 
-        window.process_buttons();
+        MainMenu option = main_menu(window, sim);
 
-        if (initButton->is_clicked())
+        switch (option)
         {
-            simulation.fill_galaxies();
-        }
-
-        if (printButton->is_clicked())
-        {
-            simulation.print_all_galaxies();
-        }
-
-        if (stepButton->is_clicked())
-        {
-            step_this_frame = true;
-        }
-
-        if (runButton->is_clicked())
-        {
-            if (!sim_running)
-            {
-                sim_running = true;
-            }
-            else
-            {
-                sim_running = false;
-            }
-        }
-
-        if (quitButton->state == CLICKED)
-        {
+        case INITIALISE:
+            sim = initialise_simulation(sim);
+            break;
+        case PRINT:
+            if (sim)
+                sim->print_all_galaxies();
+            break;
+        case STEP:
+            if (sim)
+                sim->step(LEAPFROG);
+            break;
+        case TOGGLE:
+            if (sim && sim->state == INACTIVE)
+                sim->state = ACTIVE;
+            else if (sim)
+                sim->state = INACTIVE;
+            break;
+        case QUIT:
+            delete sim;
             return EXIT_SUCCESS;
+        default:
+            break;
         }
 
-        if (sim_running || step_this_frame)
+        if (sim && sim->state == ACTIVE)
         {
-            if (simulation.n_bodies > 0)
-            {
-                if (simulation.step < (int)(sim_time / time_step))
-                {
-                    simulation.leapfrog();
-                    simulation.print_all_galaxies();
-
-                    // Remove the previous data to make way for the new positions
-                    int last_idx;
-                    while (x->length() != 0)
-                    {
-                        last_idx = x->length() - 1;
-                        x->remove(last_idx);
-                        y->remove(last_idx);
-                    }
-
-                    // Add the new positions to show on screen
-                    for (int i = 0; i < simulation.n_bodies; i++)
-                    {
-                        x->add(simulation.galaxies[i].data.position.x);
-                        y->add(simulation.galaxies[i].data.position.y);
-                    }
-                }
-            }
+            sim->step(LEAPFROG);
         }
 
-        window.draw_text(std::to_string((int)simulation.step) + "/" + std::to_string((int)(sim_time / time_step)), 10, 10, 12, Black, 100, 30);
-        window.plot(*x, *y, 300, 100, 1, "x", "y", "Body Positions (x-y projection)", -1.5, 1.5, -1.5, 1.5);
-
-        // 60 fps ~ 16 ms
-        // 20 fps ~ 50 ms
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
-    }
-
+        update_window(window, 30);
+    };
+    delete sim;
     return EXIT_SUCCESS;
 }

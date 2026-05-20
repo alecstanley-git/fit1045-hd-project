@@ -1,10 +1,13 @@
 #ifdef __APPLE__
 #include "window.hpp"
+#include "parameters.hpp"
 #include <iostream>
 #import <AppKit/AppKit.h> // import is preferred for Obj-C
 #import <objc/runtime.h> // required for associating the private delegate
 #import <QuartzCore/QuartzCore.h>
 #import <CoreText/CoreText.h>
+
+using namespace Parameters;
 
 /*
 Managing a graphical interface is heavily OS-dependent. To manage this, I have written my code to be compatible with MacOS, as well as Windows 64-bit architecture, as these are the devices I will be running this application on.
@@ -91,6 +94,7 @@ Window::Window(int _width, int _height, std::string _title)  : width(_width), he
         _window = (__bridge_retained void *)window; // Assign the pointer to the window class
     }
     setup_mouse_listeners();
+    load_font(GLOBAL_FONT + ".ttf");
 }
 
 // Run this once during your window/library initialization
@@ -264,8 +268,7 @@ void Window::draw_text(const std::string& text, int x, int y, double size, Color
             textLayer.alignmentMode = kCAAlignmentCenter;
             textLayer.contentsScale = [window backingScaleFactor];
 
-            std::string font_name = "Aboreto-Regular";
-            textLayer.font = (__bridge CFTypeRef)[NSString stringWithUTF8String:font_name.c_str()];
+            textLayer.font = (__bridge CFTypeRef)[NSString stringWithUTF8String:GLOBAL_FONT.c_str()];
 
             y = height - y - box_height;
 

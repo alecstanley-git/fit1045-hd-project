@@ -5,11 +5,9 @@
 #include <iostream>
 #include <vector>
 
-using Parameters::time_step;
+using Parameters::TIME_STEP;
 
-Body::Body(const BodyState &state) : data(state) {
-    save_state();
-}
+Body::Body(const BodyState &state) : data(state) {}
 
 Body::Body() : data() {}
 
@@ -24,11 +22,4 @@ void Body::print(int id = 0)
     std::cout << "Velocity: (" << data.velocity.x << ", " << data.velocity.y << ", " << data.velocity.z << ")" << std::endl;
     std::cout << "Acceleration: (" << data.acceleration.x << ", " << data.acceleration.y << ", " << data.acceleration.z << ")" << std::endl;
     std::cout << "---------------------" << std::endl;
-}
-
-void Body::save_state()
-{
-    data.position_history.push_back(data.position);
-    data.velocity_history.push_back(data.velocity);
-    data.acceleration_history.push_back(data.acceleration);
 }

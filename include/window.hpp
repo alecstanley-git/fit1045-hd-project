@@ -63,7 +63,7 @@ public:
 
     // High-level methods
     Button *add_button(int x, int y, int width, int height, std::string text);
-    void process_buttons();
+    void process_buttons(dynamic_array<int>* &indices);
     void plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title, double x_min, double x_max, double y_min, double y_max);
 };
 
@@ -88,23 +88,25 @@ inline Button *Window::add_button(int x, int y, int w, int h, std::string text)
     return ptr;
 }
 
-inline void Window::process_buttons()
+inline void Window::process_buttons(dynamic_array<int>* &indices)
 {
     Color box_color;
     Color text_color;
-    for (int i = 0; i < buttons.length(); i++)
+    int idx;
+    for (int i = 0; i < indices->length(); i++)
     {
-        if (buttons[i]->is_hovering(mouse_position))
+        idx = indices->get(i);
+        if (buttons[idx]->is_hovering(mouse_position))
         {
             if (is_mouse_down)
             {
                 if (was_mouse_down)
                 {
-                    buttons[i]->state = HELD;
+                    buttons[idx]->state = HELD;
                 }
                 else if (!was_mouse_down)
                 {
-                    buttons[i]->state = CLICKED;
+                    buttons[idx]->state = CLICKED;
                     was_mouse_down = true;
                 }
                 box_color = Blue;
@@ -114,7 +116,7 @@ inline void Window::process_buttons()
             {
                 box_color = LightGrey;
                 text_color = Black;
-                buttons[i]->state = HOVERING;
+                buttons[idx]->state = HOVERING;
                 was_mouse_down = false;
             }
         }
@@ -122,10 +124,10 @@ inline void Window::process_buttons()
         {
             box_color = Grey;
             text_color = White;
-            buttons[i]->state = IDLE;
+            buttons[idx]->state = IDLE;
         }
-        fill_rectangle(buttons[i]->x, buttons[i]->y, buttons[i]->width, buttons[i]->height, box_color, true);
-        draw_text(buttons[i]->text, buttons[i]->x, buttons[i]->y + buttons[i]->height / 4, 18, text_color, buttons[i]->width, buttons[i]->height);
+        fill_rectangle(buttons[idx]->x, buttons[idx]->y, buttons[idx]->width, buttons[idx]->height, box_color, true);
+        draw_text(buttons[idx]->text, buttons[idx]->x, buttons[idx]->y + buttons[idx]->height / 4, 18, text_color, buttons[idx]->width, buttons[idx]->height);
     }
 }
 

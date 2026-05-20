@@ -13,10 +13,25 @@
 
 using namespace Parameters;
 
-struct Simulator
+enum Integrator
 {
+    LEAPFROG
+};
+
+enum SimState
+{
+    INACTIVE,
+    ACTIVE
+};
+
+class Simulator
+{
+    void leapfrog();
+
+public:
     int n_bodies = 0;
-    double step = 0;
+    int current_step = 0;
+    SimState state = INACTIVE;
     dynamic_array<Body> galaxies;
 
     Simulator();
@@ -29,7 +44,7 @@ struct Simulator
 
     void calculate_acceleration();
 
-    void leapfrog();
+    void step(Integrator integrator);
 };
 
 Simulator::Simulator() {}
@@ -110,7 +125,7 @@ inline void Simulator::calculate_acceleration()
                 dx = galaxies[j].data.position - galaxies[i].data.position;
 
                 // Softened distance
-                distance_sq = dx.x * dx.x + dx.y * dx.y + dx.z * dx.z + softening * softening;
+                distance_sq = dx.x * dx.x + dx.y * dx.y + dx.z * dx.z + SOFTENING * SOFTENING;
                 distance = std::sqrt(distance_sq);
 
                 galaxies[i].data.acceleration += dx * (galaxies[j].data.mass / (distance * distance_sq));
@@ -123,18 +138,31 @@ inline void Simulator::leapfrog()
 {
     for (int i = 0; i < n_bodies; i++)
     {
-        galaxies[i].data.velocity = galaxies[i].data.velocity + galaxies[i].data.acceleration * (0.5 * time_step);
-        galaxies[i].data.position = galaxies[i].data.position + galaxies[i].data.velocity * time_step;
+        galaxies[i].data.velocity = galaxies[i].data.velocity + galaxies[i].data.acceleration * (0.5 * TIME_STEP);
+        galaxies[i].data.position = galaxies[i].data.position + galaxies[i].data.velocity * TIME_STEP;
     }
     calculate_acceleration();
     for (int i = 0; i < n_bodies; i++)
     {
-        galaxies[i].data.velocity = galaxies[i].data.velocity + galaxies[i].data.acceleration * (0.5 * time_step);
-
-        galaxies[i].save_state();
+        galaxies[i].data.velocity = galaxies[i].data.velocity + galaxies[i].data.acceleration * (0.5 * TIME_STEP);
     }
+}
 
-    step += 1;
+inline void Simulator::step(Integrator integrator)
+{
+    if (current_step < (int)(SIM_TIME / TIME_STEP))
+    {
+        switch (integrator)
+        {
+        case LEAPFROG:
+            leapfrog();
+            break;
+        default:
+            break;
+        }
+        print_all_galaxies();
+        current_step += 1;
+    }
 }
 
 #endif
