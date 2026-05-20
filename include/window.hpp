@@ -52,7 +52,7 @@ public:
 
     // Basic window management methods
     void process_events();
-    void clear_screen(Color color);
+    void clear_screen(uint64_t color);
     bool is_running();
 
     // Rendering methods
@@ -63,7 +63,7 @@ public:
 
     // High-level methods
     Button *add_button(int x, int y, int width, int height, std::string text);
-    void process_buttons(dynamic_array<int>* &indices);
+    void process_buttons(dynamic_array<int> &indices);
     void plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title, double x_min, double x_max, double y_min, double y_max);
 };
 
@@ -88,14 +88,14 @@ inline Button *Window::add_button(int x, int y, int w, int h, std::string text)
     return ptr;
 }
 
-inline void Window::process_buttons(dynamic_array<int>* &indices)
+inline void Window::process_buttons(dynamic_array<int> &indices)
 {
     Color box_color;
     Color text_color;
     int idx;
-    for (int i = 0; i < indices->length(); i++)
+    for (int i = 0; i < indices.length(); i++)
     {
-        idx = indices->get(i);
+        idx = indices[i];
         if (buttons[idx]->is_hovering(mouse_position))
         {
             if (is_mouse_down)

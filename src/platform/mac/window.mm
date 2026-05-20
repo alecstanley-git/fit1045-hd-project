@@ -35,7 +35,7 @@ Private delegate window class
 The colour conversion to the NSColor object used by AppKit
 Uses bitwise shifting and comparing and then normalise between 0 and 1.
 */
-static NSColor* convertColor(Color hexColor)
+static NSColor* convertColor(uint64_t hexColor)
 {
     CGFloat r = ((hexColor >> 24) & 0xFF) / 255.0;
     CGFloat g = ((hexColor >> 16) & 0xFF) / 255.0;
@@ -63,7 +63,7 @@ Window::Window(int _width, int _height, std::string _title)  : width(_width), he
         NSRect frame = NSMakeRect(0, 0, width, height);
 
         // Set some styles...
-        NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable;
+        NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
 
         // Create the blank window
         NSWindow* window = [[NSWindow alloc] initWithContentRect:frame styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
@@ -175,7 +175,7 @@ void Window::process_events()
 The layering functionality in AppKit allows us to build virtual 'layers' on top of the window.
 Clear screen has us delete all the layers and set a background color.
 */
-void Window::clear_screen(Color color)
+void Window::clear_screen(uint64_t color)
 {
     @autoreleasepool {
         NSWindow* window = (__bridge NSWindow *)_window;

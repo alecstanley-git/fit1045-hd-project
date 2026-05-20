@@ -22,7 +22,7 @@ IMPLEMENTATION PLAN:
   - Look into time regularisation (i.e. Mikkola's or Logarithmic Hamiltonian) using a new time variable ds, where dt = r*ds.
   - Best option might be the one used by REBOUND project - IAS15 and mercurius.
 [ ] Develop a UnitSystem class for taking in and outputting realistic units - the solver will still only interact with normalised units
-[ ] Clean up main.cpp (it's currently spaghetti code)
+[x] Clean up main.cpp (it's currently spaghetti code)
 
 */
 
@@ -43,27 +43,108 @@ using namespace Constants;
 using namespace Parameters;
 using namespace std;
 
-enum MainMenu
+enum Menu
 {
-    INITIALISE,
-    PRINT,
-    STEP,
-    TOGGLE,
-    QUIT,
-    NO_CHOICE
+    MAIN,
+    PLOT2D
+};
+
+enum MenuCommand
+{
+    NONE,
+    GO_BACK,
+    START,
+    QUIT
 };
 
 Simulator *initialise_simulation(Simulator *sim)
 {
     delete sim;
+    sim = nullptr;
     Simulator *new_sim = new Simulator();
     new_sim->fill_galaxies();
     return new_sim;
 }
 
-void draw_window(Window &window, const Simulator *sim)
+void create_buttons(Window &window)
 {
-    window.clear_screen(BACKGROUND_COLOR);
+    int BUTTON_WIDTH = 200;
+    int BUTTON_HEIGHT = 60;
+
+    // Main menu buttons
+    window.add_button(WINDOW_WIDTH / 2 - 250, WINDOW_HEIGHT / 2 + 50, BUTTON_WIDTH, BUTTON_HEIGHT, "Start");
+    window.add_button(WINDOW_WIDTH / 2 + 50, WINDOW_HEIGHT / 2 + 50, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
+
+    BUTTON_WIDTH = 140;
+    BUTTON_HEIGHT = 40;
+    // Program running buttons
+    const double width = WINDOW_WIDTH / 10;
+    const double height = WINDOW_HEIGHT / 6;
+    window.add_button(width, height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Initialise");
+    window.add_button(width, 2 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Print state");
+    window.add_button(width, 3 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Step");
+    window.add_button(width, 4 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Run/Stop");
+    window.add_button(width, 5 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Return");
+}
+
+MenuCommand main_menu(Window &window)
+{
+    window.draw_text("N-Body Collision", 0, WINDOW_HEIGHT / 4, 50, Black, WINDOW_WIDTH, 100);
+    window.draw_text("Simulator", 0, WINDOW_HEIGHT / 4 + 50, 50, Black, WINDOW_WIDTH, 100);
+
+    dynamic_array<int> indices;
+    indices.add(0);
+    indices.add(1);
+    window.process_buttons(indices);
+
+    if (window.buttons[0]->is_clicked())
+        return START;
+    if (window.buttons[1]->is_clicked())
+        return QUIT;
+
+    return NONE;
+}
+
+MenuCommand plot2d_menu(Window &window, Simulator *&sim)
+{
+    dynamic_array<int> indices;
+    indices.add(2);
+    indices.add(3);
+    indices.add(4);
+    indices.add(5);
+    indices.add(6);
+    window.process_buttons(indices);
+
+    if (window.buttons[2]->is_clicked())
+        sim = initialise_simulation(sim);
+    if (window.buttons[3]->is_clicked())
+        if (sim)
+            sim->print_all_galaxies();
+    if (window.buttons[4]->is_clicked())
+        if (sim)
+            sim->step(LEAPFROG);
+    if (window.buttons[5]->is_clicked())
+    {
+        if (sim && sim->state == INACTIVE)
+        {
+            sim->state = ACTIVE;
+        }
+        else if (sim)
+        {
+            sim->state = INACTIVE;
+        }
+    }
+    if (window.buttons[6]->is_clicked())
+    {
+        delete sim;
+        sim = nullptr;
+        return GO_BACK;
+    }
+
+    if (sim && sim->state == ACTIVE)
+    {
+        sim->step(LEAPFROG);
+    }
 
     if (sim)
     {
@@ -77,106 +158,62 @@ void draw_window(Window &window, const Simulator *sim)
         }
         window.plot(x, y, 300, 100, 1, "x", "y", "Body Positions (x-y projection)", -1.5, 1.5, -1.5, 1.5);
     }
-}
 
-void create_buttons(Window &window)
-{
-    const int BUTTON_WIDTH = 140;
-    const int BUTTON_HEIGHT = 40;
-
-    window.add_button(100, 100, BUTTON_WIDTH, BUTTON_HEIGHT, "Initialise");
-    window.add_button(100, 200, BUTTON_WIDTH, BUTTON_HEIGHT, "Print state");
-    window.add_button(100, 300, BUTTON_WIDTH, BUTTON_HEIGHT, "Step");
-    window.add_button(100, 400, BUTTON_WIDTH, BUTTON_HEIGHT, "Run/Stop");
-    window.add_button(100, 500, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
-    window.add_button(100, 200, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
-}
-
-MainMenu main_menu(Window &window, const Simulator *sim)
-{
-    dynamic_array<int> *indices = new dynamic_array<int>;
-    if (sim)
-    {
-        for (int i = 0; i < 5; i++)
-        {
-            indices->add(i);
-        }
-    }
-    else
-    {
-        indices->add(0);
-        indices->add(5);
-    }
-    window.process_buttons(indices);
-    delete indices;
-
-    if (window.buttons[0]->is_clicked())
-        return INITIALISE;
-    if (window.buttons[1]->is_clicked())
-        return PRINT;
-    if (window.buttons[2]->is_clicked())
-        return STEP;
-    if (window.buttons[3]->is_clicked())
-        return TOGGLE;
-    if (window.buttons[4]->is_clicked() || window.buttons[5]->is_clicked())
-        return QUIT;
-
-    return NO_CHOICE;
+    return NONE;
 }
 
 void update_window(Window &window, double fps)
 {
     window.process_events();
+
     int ms = std::floor(1000.0 / fps);
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
 int main()
 {
+    // Initialising the program
     Window window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME);
+    Simulator *sim = nullptr; // Initialise an empty pointer
     create_buttons(window);
 
-    Simulator *sim = nullptr; // Initialise an empty pointer
+    // Set initial variable states and define empty variables
+    Menu menu = MAIN;
+    MenuCommand command;
 
+    // Main program loop
     while (window.is_running())
     {
-        draw_window(window, sim);
+        window.clear_screen(BACKGROUND_COLOR);
 
-        MainMenu option = main_menu(window, sim);
-
-        switch (option)
+        switch (menu)
         {
-        case INITIALISE:
-            sim = initialise_simulation(sim);
+        case MAIN:
+            command = main_menu(window);
             break;
-        case PRINT:
-            if (sim)
-                sim->print_all_galaxies();
+        case PLOT2D:
+            command = plot2d_menu(window, sim);
             break;
-        case STEP:
-            if (sim)
-                sim->step(LEAPFROG);
-            break;
-        case TOGGLE:
-            if (sim && sim->state == INACTIVE)
-                sim->state = ACTIVE;
-            else if (sim)
-                sim->state = INACTIVE;
-            break;
-        case QUIT:
-            delete sim;
-            return EXIT_SUCCESS;
         default:
             break;
         }
 
-        if (sim && sim->state == ACTIVE)
+        switch (command)
         {
-            sim->step(LEAPFROG);
+        case GO_BACK:
+            menu = MAIN;
+            break;
+        case START:
+            menu = PLOT2D;
+            break;
+        case QUIT:
+            return EXIT_SUCCESS;
+        default:
+            break;
         }
+        command = NONE;
 
-        update_window(window, 30);
+        update_window(window, FPS);
     };
-    delete sim;
     return EXIT_SUCCESS;
 }

@@ -18,6 +18,7 @@ namespace Parameters
     // Window params
     inline constexpr int WINDOW_WIDTH = 800;
     inline constexpr int WINDOW_HEIGHT = 600;
+    inline constexpr int FPS = 30;
     inline const std::string WINDOW_NAME = "Simulator";
     inline const Color BACKGROUND_COLOR = LightGrey;
     inline const std::string GLOBAL_FONT = "Aboreto-Regular";
