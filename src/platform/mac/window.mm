@@ -2,6 +2,7 @@
 #include "window.hpp"
 #include "parameters.hpp"
 #include <iostream>
+#include <cstdint>
 #import <AppKit/AppKit.h> // import is preferred for Obj-C
 #import <objc/runtime.h> // required for associating the private delegate
 #import <QuartzCore/QuartzCore.h>
@@ -35,7 +36,7 @@ Private delegate window class
 The colour conversion to the NSColor object used by AppKit
 Uses bitwise shifting and comparing and then normalise between 0 and 1.
 */
-static NSColor* convertColor(uint64_t hexColor)
+static NSColor* convertColor(std::uint64_t hexColor)
 {
     CGFloat r = ((hexColor >> 24) & 0xFF) / 255.0;
     CGFloat g = ((hexColor >> 16) & 0xFF) / 255.0;
@@ -175,7 +176,7 @@ void Window::process_events()
 The layering functionality in AppKit allows us to build virtual 'layers' on top of the window.
 Clear screen has us delete all the layers and set a background color.
 */
-void Window::clear_screen(uint64_t color)
+void Window::clear_screen(std::uint64_t color)
 {
     @autoreleasepool {
         NSWindow* window = (__bridge NSWindow *)_window;
@@ -223,7 +224,7 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color, bool is_but
     }
 }
 
-void Window::fill_circle(int x, int y, int r, Color color)
+void Window::fill_circle(int x, int y, int radius, Color color)
 {
     @autoreleasepool
     {
@@ -232,7 +233,7 @@ void Window::fill_circle(int x, int y, int r, Color color)
         if (window)
         {
             CAShapeLayer *circleLayer = [CAShapeLayer layer];
-            CGRect bounding_rect = CGRectMake(x - r, height - y + r, 2*r, 2*r);
+            CGRect bounding_rect = CGRectMake(x - radius, height - y + radius, 2*radius, 2*radius);
 
             CGPathRef path = CGPathCreateWithEllipseInRect(bounding_rect, NULL);
             circleLayer.path = path;

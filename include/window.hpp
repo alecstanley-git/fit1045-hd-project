@@ -2,6 +2,8 @@
 #define WINDOW_H
 
 #include <iostream>
+#include <cstdint>
+#include <cmath>
 #include "button.hpp"
 #include "dynamic-array.hpp"
 #include "point2d.hpp"
@@ -10,7 +12,7 @@
 This enum stores colour information in hexadecimal format.
 Both Windows and Mac store colour differently. This format is easy to translate in the OS-specific methods.
 */
-enum Color : uint64_t
+enum Color : std::uint64_t
 {
     Red = 0xFF0000FF,
     Green = 0x00FF00FF,
@@ -52,12 +54,12 @@ public:
 
     // Basic window management methods
     void process_events();
-    void clear_screen(uint64_t color);
+    void clear_screen(std::uint64_t color);
     bool is_running();
 
     // Rendering methods
     void fill_rectangle(int x, int y, int width, int height, Color color, bool is_button = false);
-    void fill_circle(int x, int y, int r, Color color);
+    void fill_circle(int x, int y, int radius, Color color);
     void draw_text(const std::string &text, int x, int y, double size, Color color, int box_width, int box_height);
     bool load_font(const std::string &file_path);
 

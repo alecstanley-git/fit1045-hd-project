@@ -21,7 +21,7 @@ namespace Parameters
     inline constexpr int FPS = 30;
     inline const std::string WINDOW_NAME = "Simulator";
     inline const Color BACKGROUND_COLOR = LightGrey;
-    inline const std::string GLOBAL_FONT = "Aboreto-Regular";
+    inline const std::string GLOBAL_FONT = "Aboreto";
 };
 
 #endif

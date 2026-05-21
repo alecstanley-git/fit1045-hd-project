@@ -5,7 +5,7 @@ SRC = src/*.cpp
 ifeq ($(OS),Windows_NT)
 	# WINDOWS SETTINGS
 	TARGET = bin/simulator.exe
-	CXXFLAGS += -lgdi32 -luser32
+	CXXFLAGS += -lgdi32 -lgdiplus -luser32 -static-libgcc -static-libstdc++ -static
 	SRC += src/platform/win/window.cpp
 	CLEAN_CMD = del /f /q
 else
