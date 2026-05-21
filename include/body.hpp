@@ -41,8 +41,6 @@ struct Body
     // Print galaxy parameters
     // @param id - allow a unique galaxy ID to be passed in and displayed
     void print(int id);
-
-    void save_state();
 };
 
 #endif

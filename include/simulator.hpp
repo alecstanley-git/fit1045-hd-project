@@ -9,9 +9,11 @@
 #include "simulator.hpp"
 #include "console-input.hpp"
 #include "parameters.hpp"
+#include "constants.hpp"
 #include "dynamic-array.hpp"
 
 using namespace Parameters;
+using namespace Constants;
 
 enum Integrator
 {
@@ -24,6 +26,22 @@ enum SimState
     ACTIVE
 };
 
+// Fast Inverse Square Root (Double Precision)
+// This avoids the expensive std::sqrt division
+inline double fast_inv_sqrt_d(double number)
+{
+    double y = number;
+    double x2 = y * 0.5;
+    std::int64_t i = *(std::int64_t *)&y;
+
+    i = 0x5fe6eb50c7b537a9 - (i >> 1);
+    y = *(double *)&i;
+
+    // One iteration of Newton's method
+    y = y * (1.5 - (x2 * y * y));
+    return y;
+}
+
 class Simulator
 {
     void leapfrog();
@@ -32,40 +50,86 @@ public:
     int n_bodies = 0;
     int current_step = 0;
     SimState state = INACTIVE;
-    dynamic_array<Body> galaxies;
+    dynamic_array<Body> bodies;
 
     Simulator();
-
-    void fill_galaxies();
-
+    void fill();
     BodyState fetch_user_config_console();
-
-    void print_all_galaxies();
-
+    void print_all();
     void calculate_acceleration();
-
     void step(Integrator integrator);
 };
 
 Simulator::Simulator() {}
 
-void Simulator::fill_galaxies()
+void Simulator::fill()
 {
     std::cout << std::endl;
-    n_bodies = read_integer_range("How many bodies in the simulation? ", 1, INT_MAX);
+    int to_add = read_integer_range("How many masses in the simulation? ", 1, INT_MAX);
     std::cout << std::endl;
 
-    for (int i = 0; i < n_bodies; i++)
+    for (int i = 0; i < to_add; i++)
     {
         std::cout << std::endl
-                  << "[-] Initialising galaxy " << i + 1 << "..." << std::endl
+                  << "[-] Initialising body " << i + 1 << "..." << std::endl
                   << std::endl;
         BodyState params = fetch_user_config_console();
-        Body new_galaxy(params);
-        galaxies.add(new_galaxy);
+        Body new_body(params);
+        n_bodies += 1;
+        bodies.add(new_body);
+
+        // Pre-calculate constants for the primary body
+        double a_rad = params.angle * pi / 180.0;
+        double cos_a = std::cos(a_rad);
+        double sin_a = std::sin(a_rad);
+        double softening_sq = SOFTENING * SOFTENING;
+
+        // Adding rings according to Toomre and Toomre 1972
+        for (int i = 1; i < params.rings + 1; i++)
+        {
+            double ri = i * dr;
+            double nphi = 12 + 6 * (i - 1);
+            double r_sq = ri * ri;
+            double dist_sq = r_sq + softening_sq;
+            double vphi = std::sqrt((params.mass * r_sq) / (dist_sq * std::sqrt(dist_sq)));
+
+            double dphi = 2 * pi / nphi;
+            double cos_dphi = std::cos(dphi);
+            double sin_dphi = std::sin(dphi);
+
+            double cos_phi = 1.0;
+            double sin_phi = 0.0;
+
+            for (int j = 1; j < nphi + 1; j++)
+            {
+                BodyState config;
+                config.mass = 0.0;
+                config.angle = 0.0;
+                config.rings = 0;
+
+                config.position.x = params.position.x + ri * cos_phi * cos_a;
+                config.position.y = params.position.y + ri * sin_phi;
+                config.position.z = params.position.z - ri * cos_phi * sin_a;
+
+                config.velocity.x = params.velocity.x - vphi * sin_phi * cos_a;
+                config.velocity.y = params.velocity.y + vphi * cos_phi;
+                config.velocity.z = params.velocity.z + vphi * sin_phi * sin_a;
+
+                n_bodies += 1;
+                bodies.add(Body(config));
+
+                // Advance phi using rotation matrix
+                double next_cos = cos_phi * cos_dphi - sin_phi * sin_dphi;
+                double next_sin = sin_phi * cos_dphi + cos_phi * sin_dphi;
+                cos_phi = next_cos;
+                sin_phi = next_sin;
+            }
+        }
     }
     std::cout << std::endl
-              << "[-] All galaxies initialised, ready to commence." << std::endl;
+              << "[-] "
+              << n_bodies
+              << " bodies initialised, ready to commence." << std::endl;
 }
 
 BodyState Simulator::fetch_user_config_console()
@@ -101,11 +165,11 @@ BodyState Simulator::fetch_user_config_console()
     return config;
 }
 
-inline void Simulator::print_all_galaxies()
+inline void Simulator::print_all()
 {
-    for (int i = 0; i < (int)galaxies.length(); i++)
+    for (int i = 0; i < (int)bodies.length(); i++)
     {
-        galaxies[i].print(i + 1);
+        bodies[i].print(i + 1);
     }
 }
 
@@ -113,23 +177,25 @@ inline void Simulator::calculate_acceleration()
 {
     Vec3 dx{};
     double distance_sq{};
-    double distance{};
+    double inv_distance{};
+    double inv_distance3{};
 
     for (int i = 0; i < n_bodies; i++)
     {
-        galaxies[i].data.acceleration = Vec3{0.0, 0.0, 0.0};
+        bodies[i].data.acceleration = Vec3{0.0, 0.0, 0.0};
         for (int j = 0; j < n_bodies; j++)
         {
-            if (i != j)
-            {
-                dx = galaxies[j].data.position - galaxies[i].data.position;
+            if (i == j || bodies[j].data.mass == 0.0)
+                continue;
 
-                // Softened distance
-                distance_sq = dx.x * dx.x + dx.y * dx.y + dx.z * dx.z + SOFTENING * SOFTENING;
-                distance = std::sqrt(distance_sq);
+            dx = bodies[j].data.position - bodies[i].data.position;
 
-                galaxies[i].data.acceleration += dx * (galaxies[j].data.mass / (distance * distance_sq));
-            }
+            // Softened distance
+            distance_sq = dx.x * dx.x + dx.y * dx.y + dx.z * dx.z + SOFTENING * SOFTENING;
+            inv_distance = fast_inv_sqrt_d(distance_sq);
+            inv_distance3 = inv_distance * inv_distance * inv_distance;
+
+            bodies[i].data.acceleration += dx * (bodies[j].data.mass * inv_distance3);
         }
     }
 }
@@ -138,13 +204,13 @@ inline void Simulator::leapfrog()
 {
     for (int i = 0; i < n_bodies; i++)
     {
-        galaxies[i].data.velocity = galaxies[i].data.velocity + galaxies[i].data.acceleration * (0.5 * TIME_STEP);
-        galaxies[i].data.position = galaxies[i].data.position + galaxies[i].data.velocity * TIME_STEP;
+        bodies[i].data.velocity = bodies[i].data.velocity + bodies[i].data.acceleration * (0.5 * TIME_STEP);
+        bodies[i].data.position = bodies[i].data.position + bodies[i].data.velocity * TIME_STEP;
     }
     calculate_acceleration();
     for (int i = 0; i < n_bodies; i++)
     {
-        galaxies[i].data.velocity = galaxies[i].data.velocity + galaxies[i].data.acceleration * (0.5 * TIME_STEP);
+        bodies[i].data.velocity = bodies[i].data.velocity + bodies[i].data.acceleration * (0.5 * TIME_STEP);
     }
 }
 
@@ -160,7 +226,6 @@ inline void Simulator::step(Integrator integrator)
         default:
             break;
         }
-        print_all_galaxies();
         current_step += 1;
     }
 }

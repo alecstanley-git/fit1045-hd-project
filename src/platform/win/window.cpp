@@ -17,6 +17,7 @@ using namespace Parameters;
 
 /*
 Windows window management with Win32 is a bit more verbose. To achieve the same visual effect as I can with AppKit, I opted to work with GDI+, a Microsoft-recommended addon to the default GDI which allows for easy anti-aliasing and better object handling for objects I want to render.
+Another limitation of the Windows implementation (arising from it's verbosity) compared to Mac is that AppKit uses Apple's CoreText, considered one of the highest quality text renderers in the world. The closest I can get with GDI+ is the ClearType antialiasing which does some RGB averaging between pixels. As a result, the text is always going to look worse on Windows.
 */
 
 // GDI+ global initialisations
@@ -266,10 +267,6 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color, bool is_but
         // Draw the button face
         Gdiplus::SolidBrush buttonBrush(Gdiplus::Color(255, r_chan, g_chan, b_chan));
         graphics.FillPath(&buttonBrush, &buttonPath);
-
-        // Draw the subtle border outline
-        Gdiplus::Pen borderPen(Gdiplus::Color(255, 112, 112, 112), 1.0f);
-        graphics.DrawPath(&borderPen, &buttonPath);
     }
     else
     {
@@ -303,7 +300,7 @@ void Window::draw_text(const std::string &text, int x, int y, double size, Color
     Gdiplus::Graphics graphics(ctx->memDC);
     
     // Set text anti-aliasing to match macOS CoreGraphics smooth font rendering
-    graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
+    graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
     // Construct the font directly from the cached GDI+ font family
     Gdiplus::Font gdiplusFont(

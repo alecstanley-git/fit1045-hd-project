@@ -10,7 +10,7 @@
 
 /*
 This enum stores colour information in hexadecimal format.
-Both Windows and Mac store colour differently. This format is easy to translate in the OS-specific methods.
+Both Windows (GDI+) and Mac (NSColor) store colour differently. This format is easy to translate in the OS-specific methods by bitshifting.
 */
 enum Color : std::uint64_t
 {
