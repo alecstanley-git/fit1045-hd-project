@@ -7,6 +7,8 @@
 #include "parameters.hpp"
 #include "window.hpp"
 #include "button.hpp"
+#include "camera.hpp"
+#include "data-structures.hpp"
 
 /*
 IMPLEMENTATION PLAN:
@@ -49,7 +51,8 @@ This enum defines what 'menu' the user is currently looking at. They start on th
 enum Menu
 {
     MAIN,
-    PLOT2D
+    PLOT2D,
+    PLOT3D
 };
 
 /*
@@ -60,6 +63,8 @@ enum MenuCommand
 {
     NONE,
     GO_BACK,
+    GO_2D,
+    GO_3D,
     START,
     QUIT
 };
@@ -75,6 +80,36 @@ Simulator *initialise_simulation(Simulator *sim)
     Simulator *new_sim = new Simulator();
     new_sim->fill();
     return new_sim;
+}
+
+void render_3d(Window &window, Camera &camera, dynamic_array<double> &x, dynamic_array<double> &y, dynamic_array<double> &z)
+{
+    Mat4 view = camera.GetViewMatrix();
+    Mat4 proj = camera.GetProjectionMatrix();
+    Mat4 viewProj = proj * view;
+
+    dynamic_array<double> render_x, render_y;
+
+    for (int i = 0; i < x.length(); i++)
+    {
+        Vec4 p = {x[i], y[i], z[i], 1.0};
+
+        p = viewProj * p;
+
+        // Make further things smaller
+        if (p.w != 0.0)
+        {
+            p.x /= p.w;
+            p.y /= p.w;
+            p.z /= p.w;
+        }
+
+        if (p.w <= 0.0) continue;   // skip points behind the camera
+
+        render_x.add(p.x);
+        render_y.add(p.y);
+    }
+    window.plot(render_x, render_y, 300, 100, 1, "?", "?", "3D", -1.5, 1.5, -1.5, 1.5);
 }
 
 /*
@@ -100,6 +135,10 @@ void create_buttons(Window &window)
     window.add_button(width, 3 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Step");
     window.add_button(width, 4 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Run/Stop");
     window.add_button(width, 5 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Return");
+
+    // Temp button to access 3D mode and go back
+    window.add_button(width, 6 * height - BUTTON_HEIGHT, BUTTON_WIDTH / 2, BUTTON_HEIGHT, "3D");
+    window.add_button(width, 6 * height - BUTTON_HEIGHT, BUTTON_WIDTH / 2, BUTTON_HEIGHT, "2D");
 }
 
 // ---- MENUS ----
@@ -126,9 +165,9 @@ MenuCommand main_menu(Window &window)
 }
 
 /*
-The plot2d menu is a bit more complicated. It allows the user to actually initialise and run the simulation, showing a 2D x-y projection of the objects on the right.
+The plot menu is a bit more complicated. It allows the user to actually initialise and run the simulation, showing a 2D x-y projection of the objects on the right.
 */
-MenuCommand plot2d_menu(Window &window, Simulator *&sim)
+MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camera)
 {
     dynamic_array<int> indices;
     indices.add(2);
@@ -136,6 +175,14 @@ MenuCommand plot2d_menu(Window &window, Simulator *&sim)
     indices.add(4);
     indices.add(5);
     indices.add(6);
+    if (menu == PLOT2D)
+    {
+        indices.add(7); // The 3d button
+    }
+    else if (menu == PLOT3D)
+    {
+        indices.add(8); // The 2d button
+    }
     window.process_buttons(indices);
 
     if (window.buttons[2]->is_clicked())
@@ -163,6 +210,14 @@ MenuCommand plot2d_menu(Window &window, Simulator *&sim)
         sim = nullptr;
         return GO_BACK;
     }
+    if (window.buttons[7]->is_clicked())
+    {
+        return GO_3D;
+    }
+    if (window.buttons[8]->is_clicked())
+    {
+        return GO_2D;
+    }
 
     if (sim && sim->state == ACTIVE)
     {
@@ -175,13 +230,22 @@ MenuCommand plot2d_menu(Window &window, Simulator *&sim)
         // Write the current step in the top-left corner
         window.draw_text(std::to_string((int)sim->current_step) + "/" + std::to_string((int)(SIM_TIME / TIME_STEP)), 10, 10, 12, Black, 100, 30);
 
-        dynamic_array<double> x, y;
+        dynamic_array<double> x, y, z;
         for (int i = 0; i < sim->bodies.length(); i++)
         {
             x.add(sim->bodies[i].data.position.x);
             y.add(sim->bodies[i].data.position.y);
+            z.add(sim->bodies[i].data.position.z);
         }
-        window.plot(x, y, 300, 100, 1, "x", "y", "Body Positions (x-y projection)", -1.5, 1.5, -1.5, 1.5);
+
+        if (menu == PLOT2D)
+        {
+            window.plot(x, y, 300, 100, 1, "x", "y", "Body Positions (x-y projection)", -1.5, 1.5, -1.5, 1.5);
+        }
+        else if (menu == PLOT3D)
+        {
+            render_3d(window, camera, x, y, z);
+        }
     }
 
     return NONE;
@@ -194,7 +258,7 @@ void update_window(Window &window, double fps)
 {
     window.process_events();
 
-    int ms = std::floor(1000.0 / fps);
+    int ms = (int)std::floor(1000.0 / fps);
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
@@ -202,6 +266,7 @@ int main()
 {
     // Initialising the program
     Window window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME);
+    Camera camera(CAM_POSITION, {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, CAM_FOV, CAM_ASPECT, CAM_ZNEAR, CAM_ZFAR);
     Simulator *sim = nullptr; // Initialise an empty pointer
     create_buttons(window);
 
@@ -220,7 +285,8 @@ int main()
             command = main_menu(window);
             break;
         case PLOT2D:
-            command = plot2d_menu(window, sim);
+        case PLOT3D:
+            command = plot_menu(window, sim, menu, camera);
             break;
         default:
             break;
@@ -230,6 +296,12 @@ int main()
         {
         case GO_BACK:
             menu = MAIN;
+            break;
+        case GO_2D:
+            menu = PLOT2D;
+            break;
+        case GO_3D:
+            menu = PLOT3D;
             break;
         case START:
             menu = PLOT2D;

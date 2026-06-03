@@ -56,12 +56,10 @@ inline bool Button::is_clicked()
 {
     if (state == CLICKED)
     {
+        state = IDLE;
         return true;
     }
-    else
-    {
-        return false;
-    }
+    return false;
 }
 
 inline bool Button::is_held()

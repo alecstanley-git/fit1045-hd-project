@@ -47,6 +47,11 @@ Vec3 Vec3::operator*(const Vec3 &other) const
     return {x * other.x, y * other.y, z * other.z};
 }
 
+double Vec3::dot(const Vec3 &other) const
+{
+    return x * other.x + y * other.y + z * other.z;
+}
+
 Vec3 Vec3::cross(const Vec3 &other) const
 {
     return {y * other.z - z * other.y, z * other.x - x * other.z, x * other.y - y * other.x};
@@ -73,34 +78,3 @@ Vec3 Vec3::normal() const
     }
 }
 
-Mat4 Mat4::operator*(const Mat4 &other) const
-{
-    Mat4 C;
-
-    // nested loop matrix multiplication
-    for (int i = 0; i < 4; ++i)
-    { // Iterates through rows of A
-        for (int j = 0; j < 4; ++j)
-        { // Iterates through columns of B
-            for (int k = 0; k < 4; ++k)
-            { // Iterates through shared dimensions
-                C.m[i][j] += m[i][k] * other.m[k][j];
-            }
-        }
-    }
-
-    return C;
-}
-
-Vec4 Mat4::operator*(const Vec4 &other) const
-{
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; j < 4; j++)
-        {
-            other 
-        }
-    }
-
-    return other;
-}
