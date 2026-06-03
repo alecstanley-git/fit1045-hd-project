@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <string>
-#include "point2d.hpp"
+#include "data-structures.hpp"
 
 /*
 Button state enum defining whether a button object is being hovered with the mouse, actively being pressed, or neither

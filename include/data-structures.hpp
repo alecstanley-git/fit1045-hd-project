@@ -1,6 +1,12 @@
 #ifndef DATA_STRUCTURES_H
 #define DATA_STRUCTURES_H
 
+struct Point2D
+{
+    int x;
+    int y;  
+};
+
 struct Vec3
 {
     // Three coordinate axes initialised to zero - no constructor needed; public variables

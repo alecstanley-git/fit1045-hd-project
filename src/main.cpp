@@ -1,11 +1,10 @@
 #include <iostream>
-#include <chrono>
-#include <thread>
 #include "simulator.hpp"
 #include "console-input.hpp"
 #include "constants.hpp"
 #include "parameters.hpp"
 #include "window.hpp"
+#include "figure.hpp"
 #include "button.hpp"
 #include "camera.hpp"
 #include "data-structures.hpp"
@@ -14,10 +13,13 @@
 IMPLEMENTATION PLAN:
 
 [x] Create the body class and allow it to be filled with the required parameters
-[ ] Initialise all the stars automatically by filling rings with stars around each body
+[x] Initialise all the stars automatically by filling rings with stars around each body
 [x] Helper functions for acceleration, energy, and momentum
 [x] Design a basic numerical integrator (leapfrog)
 [/] Develop a graphical library to display plots and 3D visualisations of the data.
+  - Want to adjust dot size based on distance from camera
+  - Display 3D grid lines
+  - Possible extension: fully fledged plotting library
 [ ] Tell the makefile to copy the assets next to the executable (i.e fonts, images)
 [ ] Develop a more complex hybrid integrator (look into mercurius)
   - Solver should use fast symplectic solver on a large scale (i.e. leapfrog/wisdom-holman) and switch to RK45 (or similar) for close encounters (non-symplectic)
@@ -77,68 +79,40 @@ Simulator *initialise_simulation(Simulator *sim)
 {
     delete sim;
     sim = nullptr;
+
     Simulator *new_sim = new Simulator();
-    new_sim->fill();
+    new_sim->fill(); // Request user input to initialise simulation
+
     return new_sim;
-}
-
-void render_3d(Window &window, Camera &camera, dynamic_array<double> &x, dynamic_array<double> &y, dynamic_array<double> &z)
-{
-    Mat4 view = camera.GetViewMatrix();
-    Mat4 proj = camera.GetProjectionMatrix();
-    Mat4 viewProj = proj * view;
-
-    dynamic_array<double> render_x, render_y;
-
-    for (int i = 0; i < x.length(); i++)
-    {
-        Vec4 p = {x[i], y[i], z[i], 1.0};
-
-        p = viewProj * p;
-
-        // Make further things smaller
-        if (p.w != 0.0)
-        {
-            p.x /= p.w;
-            p.y /= p.w;
-            p.z /= p.w;
-        }
-
-        if (p.w <= 0.0) continue;   // skip points behind the camera
-
-        render_x.add(p.x);
-        render_y.add(p.y);
-    }
-    window.plot(render_x, render_y, 300, 100, 1, "?", "?", "3D", -1.5, 1.5, -1.5, 1.5);
 }
 
 /*
 This procedure is run once on startup. It adds all the UI buttons necessary for the program to run and adds them to the window class.
 Individual buttons can be called by referencing the buttons dynamic array, a field of the window class.
 */
-void create_buttons(Window &window)
+void load_buttons(Window &window)
 {
-    int BUTTON_WIDTH = 200;
-    int BUTTON_HEIGHT = 60;
+    int BUTTON_WIDTH;
+    int BUTTON_HEIGHT;
 
-    // Main menu buttons
+    // Main menu buttons ------
+    BUTTON_WIDTH = 200;
+    BUTTON_HEIGHT = 60;
     window.add_button(WINDOW_WIDTH / 2 - 250, WINDOW_HEIGHT / 2 + 50, BUTTON_WIDTH, BUTTON_HEIGHT, "Start");
     window.add_button(WINDOW_WIDTH / 2 + 50, WINDOW_HEIGHT / 2 + 50, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
 
+    // Plot menu buttons ------
     BUTTON_WIDTH = 140;
     BUTTON_HEIGHT = 40;
-    // Program running buttons
-    const double width = WINDOW_WIDTH / 10;
-    const double height = WINDOW_HEIGHT / 6;
-    window.add_button(width, height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Initialise");
-    window.add_button(width, 2 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Print state");
-    window.add_button(width, 3 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Step");
-    window.add_button(width, 4 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Run/Stop");
-    window.add_button(width, 5 * height - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Return");
-
-    // Temp button to access 3D mode and go back
-    window.add_button(width, 6 * height - BUTTON_HEIGHT, BUTTON_WIDTH / 2, BUTTON_HEIGHT, "3D");
-    window.add_button(width, 6 * height - BUTTON_HEIGHT, BUTTON_WIDTH / 2, BUTTON_HEIGHT, "2D");
+    const double x = WINDOW_WIDTH / 10;
+    const double y = WINDOW_HEIGHT / 6;
+    window.add_button(x, y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Initialise");
+    window.add_button(x, 2 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Print state");
+    window.add_button(x, 3 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Step");
+    window.add_button(x, 4 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Run/Stop");
+    window.add_button(x, 5 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Return");
+    window.add_button(WINDOW_WIDTH - 60, 20, 40, 40, "3D");
+    window.add_button(WINDOW_WIDTH - 60, 20, 40, 40, "2D");
 }
 
 // ---- MENUS ----
@@ -151,6 +125,7 @@ MenuCommand main_menu(Window &window)
     window.draw_text("N-Body Collision", 0, WINDOW_HEIGHT / 4, 50, Black, WINDOW_WIDTH, 100);
     window.draw_text("Simulator", 0, WINDOW_HEIGHT / 4 + 50, 50, Black, WINDOW_WIDTH, 100);
 
+    // We can just pick exactly what buttons to call by passing in array indices
     dynamic_array<int> indices;
     indices.add(0);
     indices.add(1);
@@ -165,7 +140,7 @@ MenuCommand main_menu(Window &window)
 }
 
 /*
-The plot menu is a bit more complicated. It allows the user to actually initialise and run the simulation, showing a 2D x-y projection of the objects on the right.
+The plot menu is a bit more complicated. It allows the user to actually initialise and run the simulation, showing a 2D or 3D projection of the motion.
 */
 MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camera)
 {
@@ -244,22 +219,11 @@ MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camer
         }
         else if (menu == PLOT3D)
         {
-            render_3d(window, camera, x, y, z);
+            window.plot3d(camera, x, y, z);
         }
     }
 
     return NONE;
-}
-
-/*
-This is a thin helper procedure that calls the process_events() method and sleeps the frame for a set time to achieve a target FPS
-*/
-void update_window(Window &window, double fps)
-{
-    window.process_events();
-
-    int ms = (int)std::floor(1000.0 / fps);
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
 int main()
@@ -268,7 +232,8 @@ int main()
     Window window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME);
     Camera camera(CAM_POSITION, {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, CAM_FOV, CAM_ASPECT, CAM_ZNEAR, CAM_ZFAR);
     Simulator *sim = nullptr; // Initialise an empty pointer
-    create_buttons(window);
+
+    load_buttons(window);
 
     // Set initial variable states and define empty variables
     Menu menu = MAIN;
@@ -313,7 +278,7 @@ int main()
         }
         command = NONE;
 
-        update_window(window, FPS);
+        window.update_window(FPS);
     };
     return EXIT_SUCCESS;
 }

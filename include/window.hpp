@@ -4,9 +4,12 @@
 #include <iostream>
 #include <cstdint>
 #include <cmath>
+#include <chrono>
+#include <thread>
 #include "button.hpp"
 #include "dynamic-array.hpp"
-#include "point2d.hpp"
+#include "data-structures.hpp"
+#include "camera.hpp"
 
 /*
 This enum stores colour information in hexadecimal format.
@@ -35,6 +38,7 @@ class Window
     bool is_open = false;
     Point2D mouse_position;
     void *_window; // This points to the os-specific window object - must be a pointer*.
+
     bool is_mouse_down = false;
     bool was_mouse_down = false;
 
@@ -46,27 +50,28 @@ public:
 
     /*
     Default constructor
-    TODO - @params
     */
     Window(int _width, int _height, std::string _title);
 
     ~Window();
 
-    // Basic window management methods
+    // Basic window management methods, os-specific
     void process_events();
     void clear_screen(std::uint64_t color);
     bool is_running();
 
-    // Rendering methods
+    // Rendering methods, os-specific
     void fill_rectangle(int x, int y, int width, int height, Color color, bool is_button = false);
     void fill_circle(int x, int y, int radius, Color color);
     void draw_text(const std::string &text, int x, int y, double size, Color color, int box_width, int box_height);
     bool load_font(const std::string &file_path);
 
-    // High-level methods
+    // High-level os-agnostic methods defined within header itself
     Button *add_button(int x, int y, int width, int height, std::string text);
     void process_buttons(dynamic_array<int> &indices);
+    void update_window(double fps);
     void plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title, double x_min, double x_max, double y_min, double y_max);
+    void plot3d(Camera &camera, const dynamic_array<double> &x, const dynamic_array<double> &y, const dynamic_array<double> &z);
 };
 
 inline Window::~Window()
@@ -133,6 +138,17 @@ inline void Window::process_buttons(dynamic_array<int> &indices)
     }
 }
 
+/*
+This is a thin helper procedure that calls the process_events() method and sleeps the frame for a set time to achieve a target FPS
+*/
+inline void Window::update_window(double fps)
+{
+    process_events();
+
+    int ms = (int)std::floor(1000.0 / fps);
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+
 inline void Window::plot(
     const dynamic_array<double> &x_data,
     const dynamic_array<double> &y_data,
@@ -191,6 +207,43 @@ inline void Window::plot(
 
         fill_circle(x + x_point, y + y_point, point_size, point_color);
     }
+}
+
+/*
+The 3D plotting function
+- Calculates transformation matrices based on camera position every frame
+- Applies transformation matrices to positions of all points
+- Draws points using standard plot method
+*/
+inline void Window::plot3d(Camera &camera, const dynamic_array<double> &x, const dynamic_array<double> &y, const dynamic_array<double> &z)
+{
+    Mat4 view = camera.GetViewMatrix();
+    Mat4 proj = camera.GetProjectionMatrix();
+    Mat4 viewProj = proj * view;
+
+    dynamic_array<double> render_x, render_y;
+
+    for (int i = 0; i < x.length(); i++)
+    {
+        Vec4 p = {x[i], y[i], z[i], 1.0};
+
+        p = viewProj * p;
+
+        // Make further things smaller
+        if (p.w != 0.0)
+        {
+            p.x /= p.w;
+            p.y /= p.w;
+            p.z /= p.w;
+        }
+
+        if (p.w <= 0.0)
+            continue; // skip points behind the camera
+
+        render_x.add(p.x);
+        render_y.add(p.y);
+    }
+    plot(render_x, render_y, 300, 100, 1, "?", "?", "3D", -1.5, 1.5, -1.5, 1.5);
 }
 
 #endif
