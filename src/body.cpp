@@ -1,6 +1,6 @@
 #include "body.hpp"
 #include "parameters.hpp"
-#include "vec3.hpp"
+#include "data-structures.hpp"
 #include "console-input.hpp"
 #include <iostream>
 #include <vector>
