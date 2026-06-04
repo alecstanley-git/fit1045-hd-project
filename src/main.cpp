@@ -215,7 +215,9 @@ MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camer
 
         if (menu == PLOT2D)
         {
-            window.plot(x, y, 300, 100, 1, "x", "y", "Body Positions (x-y projection)", -1.5, 1.5, -1.5, 1.5);
+            Figure fig(window, Point2D{300, 100}, Point2D{400, 400});
+            fig.plot(x, y, Blue, 2);
+            fig.show();
         }
         else if (menu == PLOT3D)
         {
