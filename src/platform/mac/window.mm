@@ -7,6 +7,7 @@
 #import <objc/runtime.h> // required for associating the private delegate
 #import <QuartzCore/QuartzCore.h>
 #import <CoreText/CoreText.h>
+#import <Carbon/Carbon.h> // required for detecting key presses
 
 using namespace Parameters;
 
@@ -94,12 +95,12 @@ Window::Window(int _width, int _height, std::string _title)  : width(_width), he
         is_open = true;
         _window = (__bridge_retained void *)window; // Assign the pointer to the window class
     }
-    setup_mouse_listeners();
+    setup_input_listeners();
     load_font(GLOBAL_FONT + ".ttf");
 }
 
-// Run this once during your window/library initialization
-void Window::setup_mouse_listeners()
+// only ran once during window/library initialization
+void Window::setup_input_listeners()
 {
     @autoreleasepool
     {
@@ -114,6 +115,16 @@ void Window::setup_mouse_listeners()
             this->is_mouse_down = false;
             return event;
         }];
+
+        // Listen for scroll wheel and store a rolling total as a class field
+        [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskScrollWheel handler:^NSEvent * _Nullable(NSEvent * _Nonnull event) {
+            if (event.scrollingDeltaY != 0)
+            {
+                this->zoom_level += event.scrollingDeltaY * SCROLL_ZOOM_FACTOR;
+            }
+            return event;
+        }];
+
     }
 }
 

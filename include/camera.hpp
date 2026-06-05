@@ -2,6 +2,7 @@
 #define CAMERA_H
 
 #include "data-structures.hpp"
+#include "parameters.hpp"
 
 class Camera
 {
@@ -23,6 +24,9 @@ public:
 
     // This is the perspective effect
     Mat4 GetProjectionMatrix() const;
+
+    void zoom(const double &zoom);
+    void drag(const Point2D &mouse_velocity);
 };
 
 #endif

@@ -174,7 +174,7 @@ void Figure::show()
 
         if (title != "")
         {
-            window.draw_text(title, pos.x, pos.y - 22, BUTTON_TEXTSIZE, TITLE_COLOR, dimensions.x, 22);
+            window.draw_text(title, pos.x, pos.y - 28, BUTTON_TEXTSIZE, TITLE_COLOR, dimensions.x, 22);
         }
 
         window.draw_line(pos.x, pos.y, pos.x + dimensions.x, pos.y, Grey);

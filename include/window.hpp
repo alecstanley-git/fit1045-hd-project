@@ -25,17 +25,20 @@ class Window
     int height;
     std::string title;
     bool is_open = false;
-    Point2D mouse_position;
     void *_window; // This points to the os-specific window object - must be a pointer*.
 
+    // Interaction fields
+    Point2D mouse_position = {0, 0};
+    Point2D previous_mouse_pos = {0, 0};
     bool is_mouse_down = false;
     bool was_mouse_down = false;
 
-    void setup_mouse_listeners();
+    void setup_input_listeners();
 
 public:
     // The buttons should be a publicly accessible field - they are just pointers to the structs
     dynamic_array<Button *> buttons;
+    float zoom_level = 100.0f;
 
     /*
     Default constructor
@@ -60,6 +63,7 @@ public:
     Button *add_button(int x, int y, int width, int height, std::string text);
     void process_buttons(dynamic_array<int> &indices);
     void update_window(double fps);
+    Point2D mouse_velocity();
 };
 
 inline Window::~Window()
@@ -135,6 +139,17 @@ inline void Window::update_window(double fps)
 
     int ms = (int)std::floor(1000.0 / fps);
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+
+inline Point2D Window::mouse_velocity()
+{
+    int dx = mouse_position.x - previous_mouse_pos.x;
+    int dy = mouse_position.y - previous_mouse_pos.y;
+    previous_mouse_pos = mouse_position; // ALWAYS update, even when up
+
+    if (!is_mouse_down)
+        return {0, 0};
+    return {dx, dy};
 }
 
 #endif

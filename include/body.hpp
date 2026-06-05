@@ -6,8 +6,8 @@
 #include <vector>
 #include "parameters.hpp"
 
-using Parameters::TIME_STEP;
 using Parameters::SIM_TIME;
+using Parameters::TIME_STEP;
 
 // Stores configuration for a galaxy/star - passed into the Body class
 // Default values must be used here to avoid errors if the body is not initialised properly by the user
@@ -22,9 +22,13 @@ struct BodyState
     Vec3 position{};
     Vec3 velocity{};
     Vec3 acceleration{};
+
+    /*
+    // These fields could be used in future versions of the simulator
     double kinetic_energy = 0;
     double potential_energy = 0;
     Vec3 angular_momentum{};
+    */
 };
 
 struct Body

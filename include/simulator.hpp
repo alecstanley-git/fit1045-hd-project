@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 #include <array>
-#include <cmath> // for infinity
+#include <cmath> // for infinity and sqrt
 #include "body.hpp"
 #include "simulator.hpp"
 #include "console-input.hpp"
@@ -27,25 +27,10 @@ enum SimState
     ACTIVE
 };
 
-// Fast Inverse Square Root (Double Precision)
-// This avoids the expensive std::sqrt division
-inline double fast_inv_sqrt_d(double number)
-{
-    double y = number;
-    double x2 = y * 0.5;
-    std::int64_t i = *(std::int64_t *)&y;
-
-    i = 0x5fe6eb50c7b537a9 - (i >> 1);
-    y = *(double *)&i;
-
-    // One iteration of Newton's method
-    y = y * (1.5 - (x2 * y * y));
-    return y;
-}
-
 class Simulator
 {
     void leapfrog();
+    void leapfrog_reverse();
 
 public:
     int n_bodies = 0;
@@ -62,6 +47,7 @@ public:
     void build_rings(const BodyState &params);
     void calculate_acceleration();
     void step(Integrator integrator, const bool &override_time);
+    void step_backward(Integrator integrator, const bool &override_time);
 };
 
 Simulator::Simulator() {}
@@ -243,7 +229,7 @@ inline void Simulator::calculate_acceleration()
 
             // Softened distance
             distance_sq = dx.x * dx.x + dx.y * dx.y + dx.z * dx.z + SOFTENING * SOFTENING;
-            inv_distance = fast_inv_sqrt_d(distance_sq);
+            inv_distance = 1.0 / std::sqrt(distance_sq);
             inv_distance3 = inv_distance * inv_distance * inv_distance;
 
             bodies[i].data.acceleration += dx * (bodies[j].data.mass * inv_distance3);
@@ -265,6 +251,24 @@ inline void Simulator::leapfrog()
     }
 }
 
+// Reverse leapfrog: identical to leapfrog() but with TIME_STEP negated, exploiting
+// the integrator's time-reversibility to exactly undo a forward step. Acceleration
+// depends only on positions, so on entry data.acceleration already holds the value
+// at the current positions (left there by the previous step's calculate_acceleration).
+inline void Simulator::leapfrog_reverse()
+{
+    for (int i = 0; i < n_bodies; i++)
+    {
+        bodies[i].data.velocity = bodies[i].data.velocity + bodies[i].data.acceleration * (-0.5 * TIME_STEP);
+        bodies[i].data.position = bodies[i].data.position + bodies[i].data.velocity * (-TIME_STEP);
+    }
+    calculate_acceleration();
+    for (int i = 0; i < n_bodies; i++)
+    {
+        bodies[i].data.velocity = bodies[i].data.velocity + bodies[i].data.acceleration * (-0.5 * TIME_STEP);
+    }
+}
+
 inline void Simulator::step(Integrator integrator, const bool &override_time = false)
 {
     if (current_step < (int)(SIM_TIME / TIME_STEP) || override_time)
@@ -278,6 +282,26 @@ inline void Simulator::step(Integrator integrator, const bool &override_time = f
             break;
         }
         current_step += 1;
+    }
+}
+
+// Mirror of step() that advances the simulation one step backward in time.
+// The guard is the symmetric counterpart of step()'s upper bound: automatic
+// running halts at step 0, but an explicit override_time call may continue
+// backward into negative "pre-history" (a physically valid leapfrog trajectory).
+inline void Simulator::step_backward(Integrator integrator, const bool &override_time = false)
+{
+    if (current_step > 0 || override_time)
+    {
+        switch (integrator)
+        {
+        case LEAPFROG:
+            leapfrog_reverse();
+            break;
+        default:
+            break;
+        }
+        current_step -= 1;
     }
 }
 

@@ -57,6 +57,25 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         EndPaint(hwnd, &ps);
         return 0;
     }
+    // Scroll wheel tracking. Mirrors the Mac implementation in window.mm, which keeps a
+    // rolling total in zoom_level via zoom_level += scrollingDeltaY * SCROLL_ZOOM_FACTOR.
+    // The Window* is retrieved from GWLP_USERDATA (set in the constructor) so this static
+    // callback can reach the instance. Windows reports the wheel delta as multiples of
+    // WHEEL_DELTA (120 per notch), so we normalise by it to get the same per-notch feel
+    // as Mac's scrollingDeltaY before applying the identical SCROLL_ZOOM_FACTOR.
+    case WM_MOUSEWHEEL:
+    {
+        Window *self = reinterpret_cast<Window *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+        if (self)
+        {
+            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            if (delta != 0)
+            {
+                self->zoom_level += (delta / static_cast<float>(WHEEL_DELTA)) * SCROLL_ZOOM_FACTOR;
+            }
+        }
+        return 0;
+    }
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
@@ -130,6 +149,10 @@ Window::Window(int _width, int _height, std::string _title) : width(_width), hei
     AdjustWindowRect(&rect, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
     SetWindowPos(hwnd, NULL, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE | SWP_NOZORDER);
 
+    // Associate this Window instance with the HWND so the static WindowProc can reach it
+    // (needed for scroll wheel tracking). Equivalent in spirit to the Mac delegate association.
+    SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+
     // Make visible
     ShowWindow(hwnd, SW_SHOW);
 
@@ -148,7 +171,7 @@ Window::Window(int _width, int _height, std::string _title) : width(_width), hei
     load_font(GLOBAL_FONT + ".ttf");
 }
 
-void Window::setup_mouse_listeners()
+void Window::setup_input_listeners()
 {
     // Don't need this. Windows mouse tracking is more lightweight/efficient so can run inside process_events()
 }
@@ -324,7 +347,11 @@ void Window::draw_text(const std::string &text, int x, int y, double size, Color
     Gdiplus::StringFormat format;
     format.SetAlignment(Gdiplus::StringAlignmentCenter); 
     format.SetLineAlignment(Gdiplus::StringAlignmentCenter); // Vertically centre within layoutRect
-    format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
+    // NoClip lets glyphs overhang the layout rect instead of being clipped.
+    // GDI+ reserves ~1/6 em of padding around a string and clips to the rect by
+    // default, which cuts the trailing glyph when text
+    // is centered in a tight box. macOS CoreText doesn't do this, hence Mac-only render.
+    format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
 
     // Define the floating-point bounding box
     Gdiplus::RectF layoutRect(

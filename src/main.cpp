@@ -9,6 +9,7 @@
 #include "camera.hpp"
 #include "data-structures.hpp"
 #include "parsejson.hpp"
+#include "unitsystem.hpp"
 
 /*
 IMPLEMENTATION PLAN:
@@ -17,31 +18,25 @@ IMPLEMENTATION PLAN:
 [x] Initialise all the stars automatically by filling rings with stars around each body
 [x] Helper functions for acceleration, energy, and momentum
 [x] Design a basic numerical integrator (leapfrog)
-[/] Develop a graphical library to display plots and 3D visualisations of the data.
+[x] Develop a graphical library to display plots and 3D visualisations of the data.
   - Want to adjust dot size based on distance from camera
   - Display 3D grid lines
   - Possible extension: fully fledged plotting library
-[ ] Tell the makefile to copy the assets next to the executable (i.e fonts, images)
-[ ] Develop a more complex hybrid integrator (look into mercurius)
+[/] Develop a more complex hybrid integrator (look into mercurius)
   - Solver should use fast symplectic solver on a large scale (i.e. leapfrog/wisdom-holman) and switch to RK45 (or similar) for close encounters (non-symplectic)
   - Look into time regularisation (i.e. Mikkola's or Logarithmic Hamiltonian) using a new time variable ds, where dt = r*ds.
   - Best option might be the one used by REBOUND project - IAS15 and mercurius.
-[ ] Develop a UnitSystem class for taking in and outputting realistic units - the solver will still only interact with normalised units
+[x] Develop a UnitSystem class for taking in and outputting realistic units - the solver will still only interact with normalised units
 [x] Clean up main.cpp
 [x] Allow bodies to be initialised by uploading a JSON configuration file, to help make configurations modular/repeatable (will help when recording H+1 video).
 
+Future areas:
+- Tracking kinetic/potential energy and angular momentum to demonstrate conservation laws. This is not too hard to implement but I didn't go down this route since it doesn't demonstrate much more coding ability for the unit (calculating a value each frame and plotting it isn't much more interesting).
+- The leapfrog integrator is very good at resolving Newtonian mechanics, especially with the softening factor I included. The time-to-benefit ratio was poor in terms of implementing a more advanced hybrid integrator. Such an endeavour would be more mathematics than physics focused, not ideal for a coding HD project, and would give me marginally better true-to-life results.
 */
 
 /*
-Interesting configurations:
-1) n_bodies = 3
-First: m=2, pos=(-0.5, 0, 0), vel=(0, 0.5, 0)
-Second: m=1, pos=(1, 0, 0), vel=(0, -1, 0)
-Third: m=0.5, pos=(0, 0, 0), vel=(0, 0, 0.2)
-
-2) n_bodies = 2 (simple circular orbit)
-First: m=1, pos=(1, 0, 0), vel=(0, 0.5, 0)
-Second: m=1, pos=(-1, 0, 0), vel=(0, -0.5, 0)
+AI disclosure: most of the JSON configurations used in demonstrations were AI generated. I asked it to write some files (in the format I designed) that demonstrate some interesting configurations
 */
 
 using namespace Constants;
@@ -119,7 +114,8 @@ void load_buttons(Window &window)
     const double y = WINDOW_HEIGHT / 6;
     window.add_button(x, y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Initialise");
     window.add_button(x, 2 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Print state");
-    window.add_button(x, 3 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Step");
+    window.add_button(x, 3 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH / 2 - 10, BUTTON_HEIGHT, "-");
+    window.add_button(x + BUTTON_WIDTH / 2 + 10, 3 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH / 2 - 10, BUTTON_HEIGHT, "+");
     window.add_button(x, 4 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Run/Stop");
     window.add_button(x, 5 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Return");
     window.add_button(WINDOW_WIDTH - 60, 20, 40, 40, "3D");
@@ -168,13 +164,14 @@ MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camer
     indices.add(4);
     indices.add(5);
     indices.add(6);
+    indices.add(7);
     if (menu == PLOT2D)
     {
-        indices.add(7); // The 3d button
+        indices.add(8); // The 3d button
     }
     else if (menu == PLOT3D)
     {
-        indices.add(8); // The 2d button
+        indices.add(9); // The 2d button
     }
     window.process_buttons(indices);
 
@@ -187,8 +184,11 @@ MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camer
             sim->print_all();
     if (window.buttons[4]->is_clicked())
         if (sim)
-            sim->step(LEAPFROG, true); // Allows the user to manually step even if the sim time is finished
+            sim->step_backward(LEAPFROG, true);
     if (window.buttons[5]->is_clicked())
+        if (sim)
+            sim->step(LEAPFROG, true); // Allows the user to manually step even if the sim time is finished
+    if (window.buttons[6]->is_clicked())
     {
         if (sim && sim->state == INACTIVE)
         {
@@ -199,17 +199,17 @@ MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camer
             sim->state = INACTIVE;
         }
     }
-    if (window.buttons[6]->is_clicked())
+    if (window.buttons[7]->is_clicked())
     {
         delete sim;
         sim = nullptr;
         return RESTART;
     }
-    if (window.buttons[7]->is_clicked())
+    if (window.buttons[8]->is_clicked())
     {
         return GO_3D;
     }
-    if (window.buttons[8]->is_clicked())
+    if (window.buttons[9]->is_clicked())
     {
         return GO_2D;
     }
@@ -222,8 +222,14 @@ MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camer
     // Once the simulation has been created, this code runs and plots the current position of every body, every frame.
     if (sim)
     {
+        UnitSystem u(SCALE);
+
         // Write the current step in the top-left corner
-        window.draw_text(std::to_string((int)sim->current_step) + "/" + std::to_string((int)(SIM_TIME / TIME_STEP)), 20, 20, BUTTON_TEXTSIZE, TITLE_COLOR, 200, 50);
+        window.draw_text(std::to_string((int)sim->current_step) + "/" + std::to_string((int)(SIM_TIME / TIME_STEP)), 40, 10, BUTTON_TEXTSIZE, TITLE_COLOR, 200, 50);
+
+        // Get real time
+        double current_time = u.time_to_years(sim->current_step * TIME_STEP);
+        window.draw_text(std::format("{:.2e}", current_time) + " years", 40, 35, BUTTON_TEXTSIZE, TITLE_COLOR, 200, 50);
 
         // Initialise arrays, ones for the central bodies and ones for the rings (different colours/sizes)
         dynamic_array<double> x_c, y_c, z_c;
@@ -253,15 +259,21 @@ MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camer
 
         if (menu == PLOT2D)
         {
-            fig.set_title("X-Y Projection");
+            fig.set_title("X-Y Projection (top down)");
 
             fig.plot(x_c, y_c, SolarGold, 4);
             fig.plot(x_r, y_r, CosmicTeal, 2);
         }
         else if (menu == PLOT3D)
         {
+            // Allow the user's zoom to apply each frame (from scrolling)
+            camera.zoom((double)(window.zoom_level / 100.0f));
+
+            // Also allow clicking and dragging to move perspective
+            camera.drag(window.mouse_velocity());
+
             fig.set_zlim(-1.5, 1.5);
-            fig.set_title("3D Projection");
+            fig.set_title("3D Interactive");
             fig.set_zlabel("Z");
 
             fig.plot3d(camera, x_c, y_c, z_c, SolarGold, 4);
@@ -278,24 +290,24 @@ MenuCommand init_menu(Window &window, Simulator *&sim)
     window.draw_text("Choose method", 0, WINDOW_HEIGHT / 4, TITLE_TEXTSIZE, TITLE_COLOR, WINDOW_WIDTH, 100);
 
     dynamic_array<int> indices;
-    indices.add(9);
     indices.add(10);
     indices.add(11);
+    indices.add(12);
     window.process_buttons(indices);
 
-    if (window.buttons[9]->is_clicked())
+    if (window.buttons[10]->is_clicked())
     {
         sim = initialise_simulation(sim);
         return GO_2D;
     }
 
-    if (window.buttons[10]->is_clicked())
+    if (window.buttons[11]->is_clicked())
     {
         sim = initialise_simulation(sim, CONFIG_FILEPATH);
         return GO_2D;
     }
 
-    if (window.buttons[11]->is_clicked())
+    if (window.buttons[12]->is_clicked())
     {
         return GO_2D;
     }
@@ -305,16 +317,20 @@ MenuCommand init_menu(Window &window, Simulator *&sim)
 
 int main()
 {
-    // Initialising the program
+    // Initialising the window
     Window window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME);
-    Camera camera(CAM_POSITION, {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, CAM_FOV, CAM_ASPECT, CAM_ZNEAR, CAM_ZFAR);
+
+    // Camera is normalised to be 2 units from origin, regardless of initial position
+    // Camera is always focused on origin (cannot be spun)
+    Camera camera(CAM_POSITION.normal() * 2, {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, CAM_FOV, CAM_ASPECT, CAM_ZNEAR, CAM_ZFAR);
+
     Simulator *sim = nullptr; // Initialise an empty pointer
 
     load_buttons(window);
 
     // Set initial variable states and define empty variables
     Menu menu = MAIN;
-    MenuCommand command;
+    MenuCommand command = NONE;
 
     // Main program loop
     while (window.is_running())

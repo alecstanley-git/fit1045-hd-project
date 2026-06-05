@@ -10,14 +10,16 @@ Parameters adjusting how the program runs
 #include "constants.hpp"
 #include "colors.hpp"
 #include "data-structures.hpp"
+#include "unitsystem.hpp"
 
 namespace Parameters
 {
     // Simulation params
-    inline constexpr double TIME_STEP = 0.01;
-    inline constexpr double SIM_TIME = 25;
+    inline constexpr double TIME_STEP = 0.005;
+    inline constexpr double SIM_TIME = 50;
     inline constexpr double SOFTENING = 0.1; // A softening factor to handle close collisions, avoiding dividing by zero (unphysical)
-    inline const std::string CONFIG_FILEPATH = "configurations/triple_collision.json";
+    inline const Scale SCALE = SOLAR_SYSTEM; // SOLAR_SYSTEM or INTERGALACTIC
+    inline const std::string CONFIG_FILEPATH = "configurations/crazy.json";
 
     // Window params
     inline constexpr int WINDOW_WIDTH = 1220;
@@ -38,11 +40,13 @@ namespace Parameters
     inline const Color BUTTON_TEXT_HOVER = MidnightNavy;
 
     // Camera params
-    inline const Vec3 CAM_POSITION = {0.6, -2.5, 1.2};
+    inline Vec3 CAM_POSITION = {0.6, -2.5, 1.2}; // initial position (can change by clicking+dragging)
     inline constexpr float CAM_FOV = 50.0f * Constants::pi / 180.0f;
-    inline constexpr float CAM_ASPECT = 1.3333f;
+    inline constexpr float CAM_ASPECT = 1.3333f; // Keep to 4/3 unless absolutely necessary
     inline constexpr float CAM_ZNEAR = 0.1f;
     inline constexpr float CAM_ZFAR = 50.0f;
+    inline constexpr float SCROLL_ZOOM_FACTOR = 0.1f;
+    inline constexpr double DRAG_SENSITIVITY = 0.005; // tune 0.004–0.008
 };
 
 #endif
