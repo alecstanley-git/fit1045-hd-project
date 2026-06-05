@@ -118,8 +118,8 @@ void load_buttons(Window &window)
     window.add_button(x + BUTTON_WIDTH / 2 + 10, 3 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH / 2 - 10, BUTTON_HEIGHT, "+");
     window.add_button(x, 4 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Run/Stop");
     window.add_button(x, 5 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Return");
-    window.add_button(WINDOW_WIDTH - 60, 20, 40, 40, "3D");
-    window.add_button(WINDOW_WIDTH - 60, 20, 40, 40, "2D");
+    window.add_button(WINDOW_WIDTH - 70, 20, 50, 50, "3D");
+    window.add_button(WINDOW_WIDTH - 70, 20, 50, 50, "2D");
 
     // Init menu buttons ------
     BUTTON_WIDTH = 260;

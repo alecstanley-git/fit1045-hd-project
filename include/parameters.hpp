@@ -19,7 +19,7 @@ namespace Parameters
     inline constexpr double SIM_TIME = 50;
     inline constexpr double SOFTENING = 0.1; // A softening factor to handle close collisions, avoiding dividing by zero (unphysical)
     inline const Scale SCALE = SOLAR_SYSTEM; // SOLAR_SYSTEM or INTERGALACTIC
-    inline const std::string CONFIG_FILEPATH = "configurations/crazy.json";
+    inline const std::string CONFIG_FILEPATH = "configurations/simple_binary.json";
 
     // Window params
     inline constexpr int WINDOW_WIDTH = 1220;

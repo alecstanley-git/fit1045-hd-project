@@ -71,7 +71,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             int delta = GET_WHEEL_DELTA_WPARAM(wParam);
             if (delta != 0)
             {
-                self->zoom_level += (delta / static_cast<float>(WHEEL_DELTA)) * SCROLL_ZOOM_FACTOR;
+                self->zoom_level -= (delta / static_cast<float>(WHEEL_DELTA)) * SCROLL_ZOOM_FACTOR * 15;
             }
         }
         return 0;
