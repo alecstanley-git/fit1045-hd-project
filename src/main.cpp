@@ -8,6 +8,7 @@
 #include "button.hpp"
 #include "camera.hpp"
 #include "data-structures.hpp"
+#include "parsejson.hpp"
 
 /*
 IMPLEMENTATION PLAN:
@@ -27,10 +28,10 @@ IMPLEMENTATION PLAN:
   - Best option might be the one used by REBOUND project - IAS15 and mercurius.
 [ ] Develop a UnitSystem class for taking in and outputting realistic units - the solver will still only interact with normalised units
 [x] Clean up main.cpp
-[ ] Allow bodies to be initialised by uploading a JSON configuration file, to help make configurations modular/repeatable (will help when recording H+1 video).
+[x] Allow bodies to be initialised by uploading a JSON configuration file, to help make configurations modular/repeatable (will help when recording H+1 video).
 
 */
-// test
+
 /*
 Interesting configurations:
 1) n_bodies = 3
@@ -54,7 +55,8 @@ enum Menu
 {
     MAIN,
     PLOT2D,
-    PLOT3D
+    PLOT3D,
+    INIT
 };
 
 /*
@@ -64,9 +66,10 @@ Some UI buttons will execute code directly in the same menu, but instructions th
 enum MenuCommand
 {
     NONE,
-    GO_BACK,
+    RESTART,
     GO_2D,
     GO_3D,
+    START_INIT,
     START,
     QUIT
 };
@@ -75,13 +78,21 @@ enum MenuCommand
 A helper function to call the fill() method and return the pointer to the simulation.
 Handles memory using new and delete
 */
-Simulator *initialise_simulation(Simulator *sim)
+Simulator *initialise_simulation(Simulator *sim, const string &filepath = "")
 {
     delete sim;
     sim = nullptr;
 
     Simulator *new_sim = new Simulator();
-    new_sim->fill(); // Request user input to initialise simulation
+
+    if (filepath == "")
+    {
+        new_sim->fill_console(); // Request user input to initialise simulation
+    }
+    else
+    {
+        new_sim->fill_from_file(filepath);
+    }
 
     return new_sim;
 }
@@ -96,14 +107,14 @@ void load_buttons(Window &window)
     int BUTTON_HEIGHT;
 
     // Main menu buttons ------
-    BUTTON_WIDTH = 200;
-    BUTTON_HEIGHT = 60;
-    window.add_button(WINDOW_WIDTH / 2 - 250, WINDOW_HEIGHT / 2 + 50, BUTTON_WIDTH, BUTTON_HEIGHT, "Start");
-    window.add_button(WINDOW_WIDTH / 2 + 50, WINDOW_HEIGHT / 2 + 50, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
+    BUTTON_WIDTH = 240;
+    BUTTON_HEIGHT = 80;
+    window.add_button(WINDOW_WIDTH / 2 - 280, WINDOW_HEIGHT / 2 + 50, BUTTON_WIDTH, BUTTON_HEIGHT, "Start");
+    window.add_button(WINDOW_WIDTH / 2 + 40, WINDOW_HEIGHT / 2 + 50, BUTTON_WIDTH, BUTTON_HEIGHT, "Quit");
 
     // Plot menu buttons ------
-    BUTTON_WIDTH = 140;
-    BUTTON_HEIGHT = 40;
+    BUTTON_WIDTH = 180;
+    BUTTON_HEIGHT = 60;
     const double x = WINDOW_WIDTH / 10;
     const double y = WINDOW_HEIGHT / 6;
     window.add_button(x, y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Initialise");
@@ -113,6 +124,13 @@ void load_buttons(Window &window)
     window.add_button(x, 5 * y - BUTTON_HEIGHT / 2, BUTTON_WIDTH, BUTTON_HEIGHT, "Return");
     window.add_button(WINDOW_WIDTH - 60, 20, 40, 40, "3D");
     window.add_button(WINDOW_WIDTH - 60, 20, 40, 40, "2D");
+
+    // Init menu buttons ------
+    BUTTON_WIDTH = 260;
+    BUTTON_HEIGHT = 80;
+    window.add_button(WINDOW_WIDTH / 2 - 300, WINDOW_HEIGHT / 2 + 50, BUTTON_WIDTH, BUTTON_HEIGHT, "Enter new");
+    window.add_button(WINDOW_WIDTH / 2 + 40, WINDOW_HEIGHT / 2 + 50, BUTTON_WIDTH, BUTTON_HEIGHT, "Upload from file");
+    window.add_button(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT / 2 + 200, 200, 60, "Cancel");
 }
 
 // ---- MENUS ----
@@ -122,8 +140,8 @@ The main menu will simply render the title and the start/quit buttons
 */
 MenuCommand main_menu(Window &window)
 {
-    window.draw_text("N-Body Collision", 0, WINDOW_HEIGHT / 4, 50, Black, WINDOW_WIDTH, 100);
-    window.draw_text("Simulator", 0, WINDOW_HEIGHT / 4 + 50, 50, Black, WINDOW_WIDTH, 100);
+    window.draw_text("N-Body Collision", 0, WINDOW_HEIGHT / 4, TITLE_TEXTSIZE, TITLE_COLOR, WINDOW_WIDTH, 100);
+    window.draw_text("Simulator", 0, WINDOW_HEIGHT / 4 + 65, TITLE_TEXTSIZE, TITLE_COLOR, WINDOW_WIDTH, 100);
 
     // We can just pick exactly what buttons to call by passing in array indices
     dynamic_array<int> indices;
@@ -161,13 +179,15 @@ MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camer
     window.process_buttons(indices);
 
     if (window.buttons[2]->is_clicked())
-        sim = initialise_simulation(sim);
+    {
+        return START_INIT;
+    }
     if (window.buttons[3]->is_clicked())
         if (sim)
             sim->print_all();
     if (window.buttons[4]->is_clicked())
         if (sim)
-            sim->step(LEAPFROG);
+            sim->step(LEAPFROG, true); // Allows the user to manually step even if the sim time is finished
     if (window.buttons[5]->is_clicked())
     {
         if (sim && sim->state == INACTIVE)
@@ -183,7 +203,7 @@ MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camer
     {
         delete sim;
         sim = nullptr;
-        return GO_BACK;
+        return RESTART;
     }
     if (window.buttons[7]->is_clicked())
     {
@@ -203,26 +223,81 @@ MenuCommand plot_menu(Window &window, Simulator *&sim, Menu &menu, Camera &camer
     if (sim)
     {
         // Write the current step in the top-left corner
-        window.draw_text(std::to_string((int)sim->current_step) + "/" + std::to_string((int)(SIM_TIME / TIME_STEP)), 10, 10, 12, Black, 100, 30);
+        window.draw_text(std::to_string((int)sim->current_step) + "/" + std::to_string((int)(SIM_TIME / TIME_STEP)), 20, 20, BUTTON_TEXTSIZE, TITLE_COLOR, 200, 50);
 
-        dynamic_array<double> x, y, z;
+        // Initialise arrays, ones for the central bodies and ones for the rings (different colours/sizes)
+        dynamic_array<double> x_c, y_c, z_c;
+        dynamic_array<double> x_r, y_r, z_r;
+
         for (int i = 0; i < sim->bodies.length(); i++)
         {
-            x.add(sim->bodies[i].data.position.x);
-            y.add(sim->bodies[i].data.position.y);
-            z.add(sim->bodies[i].data.position.z);
+            if (sim->bodies[i].data.mass > 0.0)
+            {
+                x_c.add(sim->bodies[i].data.position.x);
+                y_c.add(sim->bodies[i].data.position.y);
+                z_c.add(sim->bodies[i].data.position.z);
+            }
+            else if (sim->bodies[i].data.mass == 0.0)
+            {
+                x_r.add(sim->bodies[i].data.position.x);
+                y_r.add(sim->bodies[i].data.position.y);
+                z_r.add(sim->bodies[i].data.position.z);
+            }
         }
+
+        Figure fig(window, Point2D{WINDOW_WIDTH / 3, 60}, Point2D{WINDOW_HEIGHT - 120, WINDOW_HEIGHT - 120});
+        fig.set_xlim(-1.5, 1.5);
+        fig.set_ylim(-1.5, 1.5);
+        fig.set_xlabel("X");
+        fig.set_ylabel("Y");
 
         if (menu == PLOT2D)
         {
-            Figure fig(window, Point2D{300, 100}, Point2D{400, 400});
-            fig.plot(x, y, Blue, 2);
-            fig.show();
+            fig.set_title("X-Y Projection");
+
+            fig.plot(x_c, y_c, SolarGold, 4);
+            fig.plot(x_r, y_r, CosmicTeal, 2);
         }
         else if (menu == PLOT3D)
         {
-            window.plot3d(camera, x, y, z);
+            fig.set_zlim(-1.5, 1.5);
+            fig.set_title("3D Projection");
+            fig.set_zlabel("Z");
+
+            fig.plot3d(camera, x_c, y_c, z_c, SolarGold, 4);
+            fig.plot3d(camera, x_r, y_r, z_r, CosmicTeal, 2);
         }
+        fig.show();
+    }
+
+    return NONE;
+}
+
+MenuCommand init_menu(Window &window, Simulator *&sim)
+{
+    window.draw_text("Choose method", 0, WINDOW_HEIGHT / 4, TITLE_TEXTSIZE, TITLE_COLOR, WINDOW_WIDTH, 100);
+
+    dynamic_array<int> indices;
+    indices.add(9);
+    indices.add(10);
+    indices.add(11);
+    window.process_buttons(indices);
+
+    if (window.buttons[9]->is_clicked())
+    {
+        sim = initialise_simulation(sim);
+        return GO_2D;
+    }
+
+    if (window.buttons[10]->is_clicked())
+    {
+        sim = initialise_simulation(sim, CONFIG_FILEPATH);
+        return GO_2D;
+    }
+
+    if (window.buttons[11]->is_clicked())
+    {
+        return GO_2D;
     }
 
     return NONE;
@@ -255,13 +330,15 @@ int main()
         case PLOT3D:
             command = plot_menu(window, sim, menu, camera);
             break;
+        case INIT:
+            command = init_menu(window, sim);
         default:
             break;
         }
 
         switch (command)
         {
-        case GO_BACK:
+        case RESTART:
             menu = MAIN;
             break;
         case GO_2D:
@@ -269,6 +346,9 @@ int main()
             break;
         case GO_3D:
             menu = PLOT3D;
+            break;
+        case START_INIT:
+            menu = INIT;
             break;
         case START:
             menu = PLOT2D;

@@ -1,5 +1,5 @@
 CXX = clang++
-CXXFLAGS = -O2 -Wall -Wextra -Wpedantic -std=c++17 -I"include" -L"lib"
+CXXFLAGS = -O2 -Wall -Wextra -Wpedantic -std=c++20 -I"include" -L"lib"
 SRC = src/*.cpp
 
 ifeq ($(OS),Windows_NT)

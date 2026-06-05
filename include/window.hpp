@@ -10,21 +10,10 @@
 #include "dynamic-array.hpp"
 #include "data-structures.hpp"
 #include "camera.hpp"
+#include "colors.hpp"
+#include "parameters.hpp"
 
-/*
-This enum stores colour information in hexadecimal format.
-Both Windows (GDI+) and Mac (NSColor) store colour differently. This format is easy to translate in the OS-specific methods by bitshifting.
-*/
-enum Color : std::uint64_t
-{
-    Red = 0xFF0000FF,
-    Green = 0x00FF00FF,
-    Blue = 0x0000FFFF,
-    Black = 0x000000FF,
-    Grey = 0x707070FF,
-    LightGrey = 0xC2C2C2FF,
-    White = 0xFFFFFFFF
-};
+using namespace Parameters;
 
 /*
 Main window class.
@@ -63,6 +52,7 @@ public:
     // Rendering methods, os-specific
     void fill_rectangle(int x, int y, int width, int height, Color color, bool is_button = false);
     void fill_circle(int x, int y, int radius, Color color);
+    void draw_line(int x1, int y1, int x2, int y2, Color color, int linewidth = 1);
     void draw_text(const std::string &text, int x, int y, double size, Color color, int box_width, int box_height);
     bool load_font(const std::string &file_path);
 
@@ -70,8 +60,6 @@ public:
     Button *add_button(int x, int y, int width, int height, std::string text);
     void process_buttons(dynamic_array<int> &indices);
     void update_window(double fps);
-    void plot(const dynamic_array<double> &x_data, const dynamic_array<double> &y_data, int x, int y, double scale, const std::string x_label, const std::string y_label, const std::string title, double x_min, double x_max, double y_min, double y_max);
-    void plot3d(Camera &camera, const dynamic_array<double> &x, const dynamic_array<double> &y, const dynamic_array<double> &z);
 };
 
 inline Window::~Window()
@@ -116,25 +104,25 @@ inline void Window::process_buttons(dynamic_array<int> &indices)
                     buttons[idx]->state = CLICKED;
                     was_mouse_down = true;
                 }
-                box_color = Blue;
-                text_color = White;
+                box_color = BUTTON_BG_HELD;
+                text_color = BUTTON_TEXT;
             }
             else
             {
-                box_color = LightGrey;
-                text_color = Black;
+                box_color = BUTTON_BG_HOVER;
+                text_color = BUTTON_TEXT_HOVER;
                 buttons[idx]->state = HOVERING;
                 was_mouse_down = false;
             }
         }
         else
         {
-            box_color = Grey;
-            text_color = White;
+            box_color = BUTTON_BACKGROUND;
+            text_color = BUTTON_TEXT;
             buttons[idx]->state = IDLE;
         }
         fill_rectangle(buttons[idx]->x, buttons[idx]->y, buttons[idx]->width, buttons[idx]->height, box_color, true);
-        draw_text(buttons[idx]->text, buttons[idx]->x, buttons[idx]->y + buttons[idx]->height / 4, 18, text_color, buttons[idx]->width, buttons[idx]->height);
+        draw_text(buttons[idx]->text, buttons[idx]->x, buttons[idx]->y, BUTTON_TEXTSIZE, text_color, buttons[idx]->width, buttons[idx]->height);
     }
 }
 
@@ -147,103 +135,6 @@ inline void Window::update_window(double fps)
 
     int ms = (int)std::floor(1000.0 / fps);
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-}
-
-inline void Window::plot(
-    const dynamic_array<double> &x_data,
-    const dynamic_array<double> &y_data,
-    int x, int y,
-    double scale,
-    const std::string x_label,
-    const std::string y_label,
-    const std::string title,
-    double x_min, double x_max,
-    double y_min, double y_max)
-{
-    if (x_data.length() != y_data.length())
-        return;
-
-    // PARAMETERS
-    int thickness = 1;
-    int point_size = 2;
-    Color point_color = Blue;
-    double padding_multiplier = 0.1; // 0.1 corresponds to 10% margins
-
-    int scaled_width = (int)(scale * 400);
-    int scaled_height = (int)(scale * 400);
-    fill_rectangle(x, y + scaled_height - thickness, scaled_width, thickness, Black);
-    fill_rectangle(x, y, thickness, scaled_height, Black);
-
-    draw_text(title, x, y - 20, 18, Black, scaled_width, scaled_height);
-    draw_text(x_label, x, y + scaled_height + 10, 18, Black, scaled_width, scaled_height);
-    draw_text(y_label, x - 20, y, 18, Black, 20, scaled_height);
-
-    // Defining the screen space from the data space
-    dynamic_array<int> x_data_screen;
-    dynamic_array<int> y_data_screen;
-
-    double x_range;
-    double y_range;
-
-    x_range = (x_min == x_max) ? 1.0 : (x_max - x_min);
-
-    y_range = (y_min == y_max) ? 1.0 : (y_max - y_min);
-
-    double x_padding = scaled_width * padding_multiplier;
-    double y_padding = scaled_height * padding_multiplier;
-
-    double drawable_width = scaled_width - (2 * x_padding);
-    double drawable_height = scaled_height - (2 * y_padding);
-
-    // Combined loop
-    for (int i = 0; i < x_data.length(); i++)
-    {
-        // Calculate and store screen coordinates (with rounding)
-        int x_point = static_cast<int>(std::round(x_padding + (x_data[i] - x_min) / x_range * drawable_width));
-        int y_point = static_cast<int>(std::round(scaled_height - y_padding - (y_data[i] - y_min) / y_range * drawable_height));
-
-        x_data_screen.add(x_point);
-        y_data_screen.add(y_point);
-
-        fill_circle(x + x_point, y + y_point, point_size, point_color);
-    }
-}
-
-/*
-The 3D plotting function
-- Calculates transformation matrices based on camera position every frame
-- Applies transformation matrices to positions of all points
-- Draws points using standard plot method
-*/
-inline void Window::plot3d(Camera &camera, const dynamic_array<double> &x, const dynamic_array<double> &y, const dynamic_array<double> &z)
-{
-    Mat4 view = camera.GetViewMatrix();
-    Mat4 proj = camera.GetProjectionMatrix();
-    Mat4 viewProj = proj * view;
-
-    dynamic_array<double> render_x, render_y;
-
-    for (int i = 0; i < x.length(); i++)
-    {
-        Vec4 p = {x[i], y[i], z[i], 1.0};
-
-        p = viewProj * p;
-
-        // Make further things smaller
-        if (p.w != 0.0)
-        {
-            p.x /= p.w;
-            p.y /= p.w;
-            p.z /= p.w;
-        }
-
-        if (p.w <= 0.0)
-            continue; // skip points behind the camera
-
-        render_x.add(p.x);
-        render_y.add(p.y);
-    }
-    plot(render_x, render_y, 300, 100, 1, "?", "?", "3D", -1.5, 1.5, -1.5, 1.5);
 }
 
 #endif

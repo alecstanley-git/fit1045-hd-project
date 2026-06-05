@@ -82,14 +82,17 @@ std::wstring ToWideString(const std::string &narrow)
 }
 
 /*
-Converting the Color enum values (uint64_t) to Windows' COLORREF.
+The colour conversion to the Gdiplus::Color object used by GDI+.
+Uses bitwise shifting to isolate each 8-bit channel from the 0xRRGGBBAA hex value.
+(Native Win32 GDI calls can obtain a COLORREF from the result via .ToCOLORREF().)
 */
-static COLORREF ConvertColor(std::uint64_t hexColor)
+static Gdiplus::Color convertColor(std::uint64_t hexColor)
 {
     BYTE r = (hexColor >> 24) & 0xFF;
     BYTE g = (hexColor >> 16) & 0xFF;
     BYTE b = (hexColor >> 8) & 0xFF;
-    return RGB(r, g, b);
+    BYTE a = hexColor & 0xFF;
+    return Gdiplus::Color(a, r, g, b);
 }
 
 Window::Window(int _width, int _height, std::string _title) : width(_width), height(_height), title(_title)
@@ -214,7 +217,7 @@ void Window::clear_screen(std::uint64_t color)
 {
     Win32Context *ctx = static_cast<Win32Context *>(_window);
     RECT rect = {0, 0, width, height};
-    HBRUSH brush = CreateSolidBrush(ConvertColor(color));
+    HBRUSH brush = CreateSolidBrush(convertColor(color).ToCOLORREF());
 
     FillRect(ctx->memDC, &rect, brush);
     DeleteObject(brush);
@@ -227,11 +230,6 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color, bool is_but
     // Attach GDI+ graphics context
     Gdiplus::Graphics graphics(ctx->memDC);
     graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-
-    // Isolate color channels
-    BYTE r_chan = (color >> 24) & 0xFF;
-    BYTE g_chan = (color >> 16) & 0xFF;
-    BYTE b_chan = (color >> 8) & 0xFF;
 
     if (is_button)
     {
@@ -265,13 +263,13 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color, bool is_but
         add_round_rect(buttonPath, x, y, w, h, radius);
         
         // Draw the button face
-        Gdiplus::SolidBrush buttonBrush(Gdiplus::Color(255, r_chan, g_chan, b_chan));
+        Gdiplus::SolidBrush buttonBrush(convertColor(color));
         graphics.FillPath(&buttonBrush, &buttonPath);
     }
     else
     {
         // Standard, non-button rectangle rendering
-        Gdiplus::SolidBrush brush(Gdiplus::Color(255, r_chan, g_chan, b_chan));
+        Gdiplus::SolidBrush brush(convertColor(color));
         graphics.FillRectangle(&brush, x, y, w, h);
     }
 }
@@ -284,12 +282,21 @@ void Window::fill_circle(int x, int y, int radius, Color color)
     Gdiplus::Graphics graphics(ctx->memDC);
     graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 
-    BYTE r = (color >> 24) & 0xFF;
-    BYTE g = (color >> 16) & 0xFF;
-    BYTE b = (color >> 8) & 0xFF;
-    Gdiplus::SolidBrush brush(Gdiplus::Color(255, r, g, b));
+    Gdiplus::SolidBrush brush(convertColor(color));
 
-    graphics.FillEllipse(&brush, x - r, y - radius, radius * 2, radius * 2);
+    graphics.FillEllipse(&brush, x - radius, y - radius, radius * 2, radius * 2);
+}
+
+void Window::draw_line(int x1, int y1, int x2, int y2, Color color, int linewidth)
+{
+    Win32Context *ctx = static_cast<Win32Context *>(_window);
+
+    Gdiplus::Graphics graphics(ctx->memDC);
+    graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+
+    Gdiplus::Pen pen(convertColor(color), static_cast<Gdiplus::REAL>(linewidth));
+
+    graphics.DrawLine(&pen, x1, y1, x2, y2);
 }
 
 void Window::draw_text(const std::string &text, int x, int y, double size, Color color, int box_width, int box_height)
@@ -311,15 +318,12 @@ void Window::draw_text(const std::string &text, int x, int y, double size, Color
     );
 
     // Setup the text color brush
-    BYTE r_chan = (color >> 24) & 0xFF;
-    BYTE g_chan = (color >> 16) & 0xFF;
-    BYTE b_chan = (color >> 8) & 0xFF;
-    Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, r_chan, g_chan, b_chan));
+    Gdiplus::SolidBrush textBrush(convertColor(color));
 
     // Setup the text formatting and alignment
     Gdiplus::StringFormat format;
     format.SetAlignment(Gdiplus::StringAlignmentCenter); 
-    format.SetLineAlignment(Gdiplus::StringAlignmentNear); // Equivalent to DT_TOP
+    format.SetLineAlignment(Gdiplus::StringAlignmentCenter); // Vertically centre within layoutRect
     format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
 
     // Define the floating-point bounding box

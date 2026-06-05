@@ -207,7 +207,7 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color, bool is_but
             if (is_button)
                 {
                 rectLayer.cornerRadius = 6.0;
-                rectLayer.shadowColor = [convertColor(Grey) CGColor];
+                rectLayer.shadowColor = [convertColor(color) CGColor];
                 rectLayer.shadowOpacity = 0.3;  // Subtle idle glow
                 rectLayer.shadowRadius = 6.0;
                 rectLayer.shadowOffset = CGSizeZero; // Glowes outward evenly
@@ -251,6 +251,40 @@ void Window::fill_circle(int x, int y, int radius, Color color)
 }
 
 /*
+Draws a straight line between two points at any angle, using a stroked CAShapeLayer.
+Note the y-flip (height - y): AppKit's content view uses a bottom-left origin, while the rest of the API uses top-left.
+*/
+void Window::draw_line(int x1, int y1, int x2, int y2, Color color, int linewidth)
+{
+    @autoreleasepool
+    {
+        NSWindow* window = (__bridge NSWindow *)_window;
+
+        if (window)
+        {
+            CAShapeLayer *lineLayer = [CAShapeLayer layer];
+
+            CGMutablePathRef path = CGPathCreateMutable();
+            CGPathMoveToPoint(path, NULL, x1, height - y1);
+            CGPathAddLineToPoint(path, NULL, x2, height - y2);
+            lineLayer.path = path;
+            CGPathRelease(path);
+
+            lineLayer.strokeColor = [convertColor(color) CGColor];
+            lineLayer.lineWidth = linewidth;
+            lineLayer.fillColor = [[NSColor clearColor] CGColor];
+
+            [CATransaction begin];
+            [CATransaction setDisableActions:YES];
+
+            [[[window contentView] layer] addSublayer:lineLayer];
+
+            [CATransaction commit];
+        }
+    }
+}
+
+/*
 This does a similar thing to fill_rectangle but with text
 */
 void Window::draw_text(const std::string& text, int x, int y, double size, Color color, int box_width, int box_height)
@@ -271,9 +305,15 @@ void Window::draw_text(const std::string& text, int x, int y, double size, Color
 
             textLayer.font = (__bridge CFTypeRef)[NSString stringWithUTF8String:GLOBAL_FONT.c_str()];
 
-            y = height - y - box_height;
+            // CATextLayer has no vertical-centre mode, so size the layer to the
+            // text's line height and centre that frame within the button box.
+            NSFont *nsFont = [NSFont fontWithName:[NSString stringWithUTF8String:GLOBAL_FONT.c_str()] size:size];
+            CGFloat lineHeight = nsFont ? (nsFont.ascender - nsFont.descender) : size;
 
-            textLayer.frame = CGRectMake(x, y, box_width, box_height);
+            int box_bottom = height - y - box_height;
+            CGFloat textY = box_bottom + (box_height - lineHeight) / 2.0;
+
+            textLayer.frame = CGRectMake(x, textY, box_width, lineHeight);
 
             [CATransaction begin];
             [CATransaction setDisableActions:YES];
