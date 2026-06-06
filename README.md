@@ -92,7 +92,7 @@ data types (dynamic arrays, vectors). No OpenGL.
 
 ## Build & run
 
-'''bash
+```bash
 make            # builds bin/simulator
 ./bin/simulator
-'''
+```
