@@ -3,7 +3,6 @@
 
 #include "data-structures.hpp"
 #include <array>
-#include <vector>
 #include "parameters.hpp"
 
 using Parameters::SIM_TIME;

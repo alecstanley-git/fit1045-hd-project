@@ -3,7 +3,6 @@
 #include "data-structures.hpp"
 #include "console-input.hpp"
 #include <iostream>
-#include <vector>
 
 using Parameters::TIME_STEP;
 
