@@ -22,8 +22,8 @@ Another limitation of the Windows implementation (arising from it's verbosity) c
 
 // GDI+ global initialisations
 ULONG_PTR gdiplusToken;
-static Gdiplus::PrivateFontCollection* g_fontCollection = nullptr;
-static Gdiplus::FontFamily* g_customFontFamily = nullptr;
+static Gdiplus::PrivateFontCollection *g_fontCollection = nullptr;
+static Gdiplus::FontFamily *g_customFontFamily = nullptr;
 
 /*
 Struct to hold win-specific rendering context.
@@ -45,8 +45,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg)
     {
     case WM_DESTROY:
-        if (g_customFontFamily) delete g_customFontFamily;
-        if (g_fontCollection) delete g_fontCollection;
+        if (g_customFontFamily)
+            delete g_customFontFamily;
+        if (g_fontCollection)
+            delete g_fontCollection;
         Gdiplus::GdiplusShutdown(gdiplusToken);
         PostQuitMessage(0);
         return 0;
@@ -144,7 +146,9 @@ Window::Window(int _width, int _height, std::string _title) : width(_width), hei
         NULL                                                      // Additional data
     );
 
-    // Force the window to match the exact requested dimensions
+    // Force the window to match the exact requested dimensions.
+    // CreateWindowEx sizes the whole window including the title bar/border, so we grow
+    // the rect by the non-client area (AdjustWindowRect) to keep the client area at width x height.
     RECT rect = {0, 0, width, height};
     AdjustWindowRect(&rect, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
     SetWindowPos(hwnd, NULL, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE | SWP_NOZORDER);
@@ -156,12 +160,15 @@ Window::Window(int _width, int _height, std::string _title) : width(_width), hei
     // Make visible
     ShowWindow(hwnd, SW_SHOW);
 
-    // Initialise double buffering (mimicking AppKit layers)
+    // Initialise double buffering (mimicking AppKit layers).
+    // We render everything to an off-screen memory DC (memDC) backed by backBuffer,
+    // then blit the whole thing to the window in one go (see process_events) to avoid flicker.
     Win32Context *ctx = new Win32Context();
     ctx->hwnd = hwnd;
     HDC hdc = GetDC(hwnd);
     ctx->memDC = CreateCompatibleDC(hdc);
     ctx->backBuffer = CreateCompatibleBitmap(hdc, width, height);
+    // SelectObject returns the DC's default 1x1 bitmap; we keep it in oldBitmap to restore later
     ctx->oldBitmap = (HBITMAP)SelectObject(ctx->memDC, ctx->backBuffer);
     ReleaseDC(hwnd, hdc);
 
@@ -179,12 +186,13 @@ void Window::setup_input_listeners()
 bool Window::load_font(const std::string &file_path)
 {
     // Initialize the collection if it hasn't been created yet
-    if (!g_fontCollection) {
+    if (!g_fontCollection)
+    {
         g_fontCollection = new Gdiplus::PrivateFontCollection();
     }
-    
+
     std::wstring w_path = ToWideString(file_path);
-    
+
     // Load the .ttf file directly into the GDI+ collection
     if (g_fontCollection->AddFontFile(w_path.c_str()) != Gdiplus::Ok)
     {
@@ -195,7 +203,7 @@ bool Window::load_font(const std::string &file_path)
     // Cache the Font Family object so drawing text is extremely fast
     std::wstring wfont = ToWideString(GLOBAL_FONT);
     g_customFontFamily = new Gdiplus::FontFamily(wfont.c_str(), g_fontCollection);
-    
+
     return true;
 }
 
@@ -226,13 +234,14 @@ void Window::process_events()
         return;
     }
 
-    // Mouse tracking
+    // Mouse tracking: fetch the global cursor position then convert it into window-local pixels
     POINT pt;
     GetCursorPos(&pt);
     ScreenToClient(ctx->hwnd, &pt);
     mouse_position.x = pt.x;
     mouse_position.y = pt.y;
 
+    // The high bit of GetAsyncKeyState is set while the left button is physically down
     is_mouse_down = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
 }
 
@@ -249,7 +258,7 @@ void Window::clear_screen(std::uint64_t color)
 void Window::fill_rectangle(int x, int y, int w, int h, Color color, bool is_button)
 {
     Win32Context *ctx = static_cast<Win32Context *>(_window);
-    
+
     // Attach GDI+ graphics context
     Gdiplus::Graphics graphics(ctx->memDC);
     graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
@@ -260,7 +269,8 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color, bool is_but
         int radius = diameter / 2;
 
         // Helper lambda to construct a rounded rectangle path for GDI+
-        auto add_round_rect = [](Gdiplus::GraphicsPath& path, int rx, int ry, int rw, int rh, int rr) {
+        auto add_round_rect = [](Gdiplus::GraphicsPath &path, int rx, int ry, int rw, int rh, int rr)
+        {
             path.AddArc(rx, ry, rr * 2, rr * 2, 180, 90);
             path.AddArc(rx + rw - rr * 2, ry, rr * 2, rr * 2, 270, 90);
             path.AddArc(rx + rw - rr * 2, ry + rh - rr * 2, rr * 2, rr * 2, 0, 90);
@@ -275,16 +285,16 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color, bool is_but
             Gdiplus::GraphicsPath shadowPath;
             // Shift slightly down and right, expanding outwards each iteration
             add_round_rect(shadowPath, x + 1 - i, y + 2 - i, w + (i * 2), h + (i * 2), radius + i);
-            
+
             // Alpha channel decreases (fades out) as the shadow expands
-            Gdiplus::SolidBrush shadowBrush(Gdiplus::Color(40 - (i * 12), 0, 0, 0)); 
+            Gdiplus::SolidBrush shadowBrush(Gdiplus::Color(40 - (i * 12), 0, 0, 0));
             graphics.FillPath(&shadowBrush, &shadowPath);
         }
 
         // Build the main button path
         Gdiplus::GraphicsPath buttonPath;
         add_round_rect(buttonPath, x, y, w, h, radius);
-        
+
         // Draw the button face
         Gdiplus::SolidBrush buttonBrush(convertColor(color));
         graphics.FillPath(&buttonBrush, &buttonPath);
@@ -328,15 +338,15 @@ void Window::draw_text(const std::string &text, int x, int y, double size, Color
 
     // Attach GDI+ graphics context
     Gdiplus::Graphics graphics(ctx->memDC);
-    
+
     // Set text anti-aliasing to match macOS CoreGraphics smooth font rendering
     graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
     // Construct the font directly from the cached GDI+ font family
     Gdiplus::Font gdiplusFont(
-        g_customFontFamily, 
-        static_cast<Gdiplus::REAL>(size), 
-        Gdiplus::FontStyleRegular, 
+        g_customFontFamily,
+        static_cast<Gdiplus::REAL>(size),
+        Gdiplus::FontStyleRegular,
         Gdiplus::UnitPixel // Ensures size parameter acts as raw logical pixels (mimics Mac)
     );
 
@@ -345,7 +355,7 @@ void Window::draw_text(const std::string &text, int x, int y, double size, Color
 
     // Setup the text formatting and alignment
     Gdiplus::StringFormat format;
-    format.SetAlignment(Gdiplus::StringAlignmentCenter); 
+    format.SetAlignment(Gdiplus::StringAlignmentCenter);
     format.SetLineAlignment(Gdiplus::StringAlignmentCenter); // Vertically centre within layoutRect
     // NoClip lets glyphs overhang the layout rect instead of being clipped.
     // GDI+ reserves ~1/6 em of padding around a string and clips to the rect by
@@ -355,12 +365,11 @@ void Window::draw_text(const std::string &text, int x, int y, double size, Color
 
     // Define the floating-point bounding box
     Gdiplus::RectF layoutRect(
-        static_cast<float>(x), 
-        static_cast<float>(y), 
-        static_cast<float>(box_width), 
-        static_cast<float>(box_height)
-    );
-                              
+        static_cast<float>(x),
+        static_cast<float>(y),
+        static_cast<float>(box_width),
+        static_cast<float>(box_height));
+
     std::wstring wtext = ToWideString(text);
 
     // Render the text seamlessly to the double-buffer

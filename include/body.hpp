@@ -37,6 +37,7 @@ struct Body
     BodyState data;
 
     // Main constructor
+    // @param const BodyState &state - the struct of parameters to build the Body from
     Body(const BodyState &state);
 
     // Empty constructor called on program startup

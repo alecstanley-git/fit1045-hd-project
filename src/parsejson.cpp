@@ -1,19 +1,34 @@
-#include <cassert>
 #include <cctype>
 #include <fstream>
 #include <map>
 #include <sstream>
 #include <string>
+#include <stdexcept>
 #include "parsejson.hpp"
+
+// A "no value" result, returned whenever parsing can't proceed (file missing,
+// unreadable, or malformed). Because its type is not Object, Lookup() returns
+// nullptr for any key, so consumers fall back to their defaults and skip.
+static JsonValue NullValue()
+{
+    JsonValue v;
+    v.type = JsonType::Null;
+    v.json = nullptr;
+    return v;
+}
 
 // Reads the whole file into a string (preserving newlines so the parser sees
 // the original text exactly).
-void ReadFile(const std::string &path, std::string &output)
+bool ReadFile(const std::string &path, std::string &output)
 {
     std::ifstream file(path);
+    if (!file.is_open())
+        return false; // file not found / unreadable -> caller skips silently
+
     std::stringstream ss;
     ss << file.rdbuf();
     output = ss.str();
+    return true;
 }
 
 // Advances `it` past any insignificant whitespace, stopping at end of text.
@@ -54,7 +69,8 @@ JsonValue ParsePrimitive(const std::string &text, std::string::iterator start, s
 JsonValue ParseJsonHelper(const std::string &text, std::string::iterator &it)
 {
     SkipWhitespace(text, it);
-    assert(it != text.end() && *it == '{'); // starting with left curly brace
+    if (it == text.end() || *it != '{') // must start with a left curly brace
+        throw std::runtime_error("expected '{'");
     it++;
 
     std::map<std::string, JsonValue> *json_map = new std::map<std::string, JsonValue>;
@@ -68,7 +84,8 @@ JsonValue ParseJsonHelper(const std::string &text, std::string::iterator &it)
         SkipWhitespace(text, it);
     }
 
-    assert(it != text.end() && *it == '}');
+    if (it == text.end() || *it != '}') // must close with a right curly brace
+        throw std::runtime_error("expected '}'");
     it++;
 
     JsonValue result;
@@ -82,7 +99,8 @@ std::pair<std::string, JsonValue> RetrieveKeyValuePair(const std::string &text, 
     SkipWhitespace(text, it);
 
     // a double quote opens the key
-    assert(it != text.end() && *it == '\"');
+    if (it == text.end() || *it != '\"')
+        throw std::runtime_error("expected '\"' opening key");
     std::string::iterator key_start = ++it;
     while (it != text.end() && *it != '\"')
     {
@@ -91,11 +109,13 @@ std::pair<std::string, JsonValue> RetrieveKeyValuePair(const std::string &text, 
 
     std::string key = text.substr(key_start - text.begin(), it - key_start);
 
-    assert(it != text.end() && *it == '\"'); // closing quote of the key
+    if (it == text.end() || *it != '\"') // closing quote of the key
+        throw std::runtime_error("expected '\"' closing key");
     it++;
 
     SkipWhitespace(text, it);
-    assert(it != text.end() && *it == ':');
+    if (it == text.end() || *it != ':')
+        throw std::runtime_error("expected ':'");
     it++;
 
     // Get the corresponding value
@@ -131,10 +151,18 @@ std::pair<std::string, JsonValue> RetrieveKeyValuePair(const std::string &text, 
 JsonValue ParseJson(const std::string &path)
 {
     std::string text;
-    ReadFile(path, text);
+    if (!ReadFile(path, text) || text.empty())
+        return NullValue(); // missing/unreadable/empty -> caller skips silently
 
-    std::string::iterator start = text.begin();
-    return ParseJsonHelper(text, start);
+    try
+    {
+        std::string::iterator start = text.begin();
+        return ParseJsonHelper(text, start);
+    }
+    catch (const std::exception &)
+    {
+        return NullValue(); // malformed JSON -> skip silently instead of crashing
+    }
 }
 
 const JsonValue *Lookup(const JsonValue &object, const std::string &key)

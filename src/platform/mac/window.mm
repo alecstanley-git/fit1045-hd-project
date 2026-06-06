@@ -39,6 +39,7 @@ Uses bitwise shifting and comparing and then normalise between 0 and 1.
 */
 static NSColor* convertColor(std::uint64_t hexColor)
 {
+    // Shift each 8-bit channel down to the low byte, mask it off, then normalise to 0..1
     CGFloat r = ((hexColor >> 24) & 0xFF) / 255.0;
     CGFloat g = ((hexColor >> 16) & 0xFF) / 255.0;
     CGFloat b = ((hexColor >> 8) & 0xFF) / 255.0;
@@ -93,6 +94,7 @@ Window::Window(int _width, int _height, std::string _title)  : width(_width), he
         [NSApp finishLaunching];
 
         is_open = true;
+        // __bridge_retained hands ownership to the void* so the window survives past the autoreleasepool
         _window = (__bridge_retained void *)window; // Assign the pointer to the window class
     }
     setup_input_listeners();
@@ -175,6 +177,7 @@ void Window::process_events()
             NSPoint mouseLoc = [window mouseLocationOutsideOfEventStream];
 
             mouse_position.x = static_cast<int>(mouseLoc.x);
+            // Flip y: AppKit measures from the bottom-left, the rest of the API uses top-left
             mouse_position.y = height - static_cast<int>(mouseLoc.y);
         }
         
@@ -235,16 +238,21 @@ void Window::fill_rectangle(int x, int y, int w, int h, Color color, bool is_but
     }
 }
 
+/*
+Creates a CAShapeLayer holding an ellipse path and pushes it to the screen.
+Like the other draw calls, the y is flipped (height - y) to convert from our top-left origin to AppKit's bottom-left.
+*/
 void Window::fill_circle(int x, int y, int radius, Color color)
 {
     @autoreleasepool
     {
         NSWindow* window = (__bridge NSWindow *)_window;
-        
+
         if (window)
         {
             CAShapeLayer *circleLayer = [CAShapeLayer layer];
-            CGRect bounding_rect = CGRectMake(x - radius, height - y + radius, 2*radius, 2*radius);
+            // Build a square bounding box centred on (x, y); the ellipse is inscribed within it
+            CGRect bounding_rect = CGRectMake(x - radius, height - y - radius, 2*radius, 2*radius);
 
             CGPathRef path = CGPathCreateWithEllipseInRect(bounding_rect, NULL);
             circleLayer.path = path;

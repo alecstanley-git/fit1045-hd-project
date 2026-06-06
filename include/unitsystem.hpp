@@ -3,6 +3,12 @@
 
 #include <cmath>
 
+/*
+The unit system is defined solely for displaying the realistic timescale of the simulation
+A future implementation might allow for more unit systems (i.e. interstellar) and displaying the length scales on the plots
+A key point here is that the simulation engine does NOT perform any calculations in these units.
+*/
+
 enum Scale
 {
     SOLAR_SYSTEM,
@@ -16,7 +22,7 @@ private:
     double length_unit_cm;
     double time_unit_s;
 
-    // First define common CGS units of measurement
+    // common CGS units of measurement
     const double G_cgs = 6.674e-8;  // cm^3 g^-1 s^-2
     const double Msun_g = 1.989e33; // g
     const double AU_cm = 1.496e13;  // cm

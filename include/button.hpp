@@ -26,22 +26,27 @@ struct Button
     int y;
     int width;
     int height;
-    std::string text; // Text to display over the button (currently required)
+    std::string text;
     ButtonState state;
 
     /*
     Default constructor, casts all initialised parameters into the new object and sets the state to idle
-    @param x
-    TODO
+    @param int x_ - x-position (top left)
+    @param int y_ - y-position (top left)
+    @param int width_ - the button width in pixels
+    @param int height_ - the button height in pixels
+    @param std::string text_ - the text to display
     */
     Button(int x_, int y_, int width_, int height_, std::string text_)
         : x(x_), y(y_), width(width_), height(height_), text(text_), state(IDLE) {}
 
     /*
-    TODO
+    A simple check to see if the current mouse position lies over the button boundary
+    @param Point2D &mouse_position - the x, y position of the mouse, passed as a reference
     */
     bool is_hovering(Point2D &mouse_position) const;
 
+    // Checks to see if mouse is clicked or actively being held
     bool is_clicked();
     bool is_held();
 };

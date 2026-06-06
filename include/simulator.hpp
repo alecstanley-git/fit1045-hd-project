@@ -4,7 +4,8 @@
 #include <iostream>
 #include <string>
 #include <array>
-#include <cmath> // for infinity and sqrt
+#include <filesystem> // for listing config files at runtime
+#include <cmath>      // for infinity and sqrt
 #include "body.hpp"
 #include "simulator.hpp"
 #include "console-input.hpp"
@@ -16,11 +17,14 @@
 using namespace Parameters;
 using namespace Constants;
 
+// Selects which numerical integration scheme advances the simulation
+// Currently only the leapfrog method is implemented
 enum Integrator
 {
     LEAPFROG
 };
 
+// Tracks whether the simulation is currently running or paused/stopped
 enum SimState
 {
     INACTIVE,
@@ -29,24 +33,60 @@ enum SimState
 
 class Simulator
 {
+    // Advances every body one TIME_STEP forward using the leapfrog (kick-drift-kick) scheme
     void leapfrog();
+    // Advances every body one TIME_STEP backward, exploiting leapfrog's time-reversibility
     void leapfrog_reverse();
 
 public:
-    int n_bodies = 0;
-    int current_step = 0;
-    SimState state = INACTIVE;
-    dynamic_array<Body> bodies;
+    int n_bodies = 0;           // Total number of bodies currently in the simulation
+    int current_step = 0;       // Index of the current integration step (0 at simulation start)
+    SimState state = INACTIVE;  // Whether the simulation is running or paused
+    dynamic_array<Body> bodies; // Buffer of every body being simulated
 
+    // Default constructor; bodies are added later via the fill_* methods
     Simulator();
+
+    // Interactively prompts the user at the console to build the body list
     void fill_console();
+
+    // Loads the body list from a JSON configuration file
+    // @param const std::string &path - path to the JSON config file
     void fill_from_file(const std::string &path);
+
+    // Lists the available JSON configs and asks the user to pick one
+    // @return std::string - full path of the chosen file, or "" if none available
+    static std::string choose_config_file();
+
+    // Reads a {x, y, z} sub-object from a JSON value into a Vec3
+    // @param const JsonValue &obj - the parent JSON object to read from
+    // @param const std::string &key - key of the vector sub-object
+    // @return Vec3 - the parsed vector, or a zero vector if the key is missing
     Vec3 read_vec3(const JsonValue &obj, const std::string &key);
+
+    // Prompts the user at the console for a single body's initial state
+    // @return BodyState - the mass, angle, rings, position and velocity entered
     BodyState fetch_user_config_console();
+
+    // Prints the state of every body in the simulation to the console
     void print_all();
+
+    // Generates a set of massless test-particle rings around a primary body
+    // Follows the format from Toomre and Toomre (1972)
+    // @param const BodyState &params - the primary body's state and ring count
     void build_rings(const BodyState &params);
+
+    // Recomputes the gravitational acceleration acting on every body
     void calculate_acceleration();
+
+    // Advances the simulation one step forward in time
+    // @param Integrator integrator - the integration scheme to use
+    // @param const bool &override_time - if true, ignores the SIM_TIME upper bound
     void step(Integrator integrator, const bool &override_time);
+
+    // Advances the simulation one step backward in time
+    // @param Integrator integrator - the integration scheme to use
+    // @param const bool &override_time - if true, allows stepping before step 0
     void step_backward(Integrator integrator, const bool &override_time);
 };
 
@@ -54,6 +94,7 @@ Simulator::Simulator() {}
 
 void Simulator::fill_console()
 {
+    // Prompt user in console for all the values
     std::cout << std::endl;
     int to_add = read_integer_range("How many masses in the simulation? ", 1, INT_MAX);
     std::cout << std::endl;
@@ -80,6 +121,7 @@ void Simulator::fill_console()
 inline Vec3 Simulator::read_vec3(const JsonValue &obj, const std::string &key)
 {
     Vec3 v{};
+    // Get the lookup point for the key-value pair
     const JsonValue *sub = Lookup(obj, key);
     if (sub != nullptr)
     {
@@ -92,6 +134,7 @@ inline Vec3 Simulator::read_vec3(const JsonValue &obj, const std::string &key)
 
 inline void Simulator::fill_from_file(const std::string &path)
 {
+    // Pull all the values straight from the file
     JsonValue config = ParseJson(path);
     int to_add = GetInt(config, "count", 0);
 
@@ -115,7 +158,50 @@ inline void Simulator::fill_from_file(const std::string &path)
             build_rings(params);
     }
 
-    FreeJson(config); // release the parsed tree (matches the main.cpp pattern)
+    FreeJson(config); // release the parsed tree
+}
+
+// Lists CONFIG_DIR/*.json, prints a numbered menu to the terminal, and returns the
+// chosen file's full path. Returns "" if the directory is missing/empty. I made it static so it needs no instance state and runs
+// before the new Simulator exists.
+inline std::string Simulator::choose_config_file()
+{
+    dynamic_array<std::string> files;
+    std::error_code e;
+
+    for (const auto &entry : std::filesystem::directory_iterator(CONFIG_DIR, e))
+    {
+        if (entry.is_regular_file() && entry.path().extension() == ".json")
+            files.add(entry.path().string());
+    }
+
+    if (e || files.length() == 0)
+    {
+        std::cout << "No configuration files found in '" << CONFIG_DIR << "'." << std::endl;
+        return ""; // caller treats empty as "no selection"
+    }
+
+    // Selection sort for a stable, alphabetical menu.
+    // operator[] returns a reference, so std::swap works on entries.
+    for (int i = 0; i < files.length() - 1; i++)
+    {
+        int min_idx = i;
+        for (int j = i + 1; j < files.length(); j++)
+            if (files[j] < files[min_idx])
+                min_idx = j;
+
+        if (min_idx != i)
+            std::swap(files[i], files[min_idx]);
+    }
+
+    // Get the user's selection
+    std::cout << "\nAvailable configurations:\n";
+    for (int i = 0; i < files.length(); i++)
+        std::cout << "  " << (i + 1) << ") "
+                  << std::filesystem::path(files[i]).filename().string() << "\n";
+
+    int choice = read_integer_range("Select a configuration: ", 1, files.length());
+    return files[choice - 1];
 }
 
 BodyState Simulator::fetch_user_config_console()
@@ -251,10 +337,7 @@ inline void Simulator::leapfrog()
     }
 }
 
-// Reverse leapfrog: identical to leapfrog() but with TIME_STEP negated, exploiting
-// the integrator's time-reversibility to exactly undo a forward step. Acceleration
-// depends only on positions, so on entry data.acceleration already holds the value
-// at the current positions (left there by the previous step's calculate_acceleration).
+// Opposite of leapfrog forward
 inline void Simulator::leapfrog_reverse()
 {
     for (int i = 0; i < n_bodies; i++)
@@ -285,10 +368,7 @@ inline void Simulator::step(Integrator integrator, const bool &override_time = f
     }
 }
 
-// Mirror of step() that advances the simulation one step backward in time.
-// The guard is the symmetric counterpart of step()'s upper bound: automatic
-// running halts at step 0, but an explicit override_time call may continue
-// backward into negative "pre-history" (a physically valid leapfrog trajectory).
+// Mirror of step() that calls leapfrog_reverse().
 inline void Simulator::step_backward(Integrator integrator, const bool &override_time = false)
 {
     if (current_step > 0 || override_time)
