@@ -1,120 +1,98 @@
 # FIT1045 High Distinction Project -- N-Body Collision Simulator
 
-A from-scratch C++ N-body gravitational simulator with a custom JSON loader, a
-custom dynamic array, a leapfrog integrator, and a hand-rolled 2D/3D plotting +
-camera system rendered through a cross-platform (macOS/Windows) windowing layer.
+A from-scratch C++ N-body gravitational simulator with a custom physics integration engine, 
+a custom rendering library (window, figures, camera), and other custom tools like a JSON loader and various 
+data types (dynamic arrays, vectors). No OpenGL.
 
 ---
 
-## Interview discussion points
+## Main discussion points
 
 ### 1. Overall architecture & design
-- **Clean separation of concerns**: `Simulator` (physics) is fully decoupled
-  from `Window`/`Figure`/`Camera` (rendering) and from `parsejson` (I/O). The
+- **Clean separation of concerns**: 'Simulator' (physics) is fully decoupled
+  from 'Window'/'Figure'/'Camera' (rendering) and from 'parsejson' (I/O). The
   solver never knows it is being drawn.
-- **State-machine UI loop** in [main.cpp](src/main.cpp): the `Menu` /
-  `MenuCommand` enums drive a render-then-dispatch loop. Be ready to explain why
-  you separated "what the user is looking at" (`Menu`) from "what they asked for"
-  (`MenuCommand`) -- it decouples button handling from navigation.
-- **Header-heavy design**: `Simulator` is implemented inline in
-  [simulator.hpp](include/simulator.hpp). Worth acknowledging the trade-off
-  (convenience vs. compile times / one-definition-rule discipline).
+- **State-machine UI loop** in [main.cpp](src/main.cpp): the 'Menu' /
+  'MenuCommand' enums drive a render-then-dispatch loop. This separates "what the user is looking at" ('Menu') from "what they asked for"
+  ('MenuCommand') -- it decouples button handling from navigation.
+- **Header-heavy design**: 'Simulator' is implemented inline in
+  [simulator.hpp](include/simulator.hpp). You can see my learning process from writing mostly inline header files to becoming much more comfortable working across header files and separate implementation files.
 
-### 2. The physics (the core of the project)
+### 2. The physics engine
 - **Leapfrog (kick-drift-kick) integrator** in
-  [simulator.hpp:254](include/simulator.hpp#L254). Know *why* you chose it:
-  it is **symplectic** (bounded energy error over long runs) and **time-reversible**,
-  unlike naive Euler which spirals out. This is your strongest talking point.
-- **Softening factor** (`SOFTENING = 0.1`) in `calculate_acceleration` -- prevents
-  the `1/r^2` force blowing up to infinity during close encounters / division by
-  zero. Explain the physical vs. numerical motivation.
+  [simulator.hpp:254](include/simulator.hpp#L254). It is a **symplectic** (bounded energy error over long runs) and **time-reversible** integrator, unlike naive Euler which spirals out. It is simple and accurate, especially coupled with the softening factor
+- **Softening factor** ('SOFTENING = 0.1') in 'calculate_acceleration' -- prevents
+  the '1/r^2' force blowing up to infinity during close encounters / division by
+  zero. This tends to be unphysical for very close encounters but remains symplectic and time-reversible. Not an issue in most configurations I demonstrated.
 - **Ring initialisation following Toomre & Toomre (1972)** in
-  [`build_rings`](include/simulator.hpp#L176) -- massless tracer particles placed
-  on circular orbits (`nphi = 12 + 6(i-1)` per ring) given a circular orbital
-  velocity `vphi`. Good evidence of engaging with real astrophysics literature.
-- **Massless tracer optimisation**: ring particles have `mass = 0` and are skipped
-  as force *sources* (the `j` loop), so the expensive interaction is only between
-  massive bodies -- tracers feel gravity but do not exert it. This is the standard
-  restricted N-body trick; make sure you can say *why* it is O(N*M) not O(N^2).
+  ['build_rings'](include/simulator.hpp#L176) -- massless tracer particles placed
+  on circular orbits ('nphi = 12 + 6(i-1)' per ring) given a circular orbital
+  velocity 'vphi'. This is taken straight from known literature in astrophysical simulations.
+- **Massless tracer optimisation**: ring particles have 'mass = 0' and are skipped
+  as force *sources* (the 'j' loop), so the expensive interaction is only between
+  massive bodies -- tracers feel gravity but do not exert it. This is a standard
+  restricted N-body trick; it is O(N*M) not O(N^2).
 
 ### 3. Units & normalisation
 - [unitsystem.hpp](include/unitsystem.hpp): the solver runs in **normalised units
-  where G = 1**, and `UnitSystem` converts to/from physical CGS units. The time
+  where G = 1**, and 'UnitSystem' converts to/from physical CGS units. The time
   unit is *derived* from the chosen length and mass units via
-  `t = sqrt(L^3 / (G*M))`. Be ready to explain why normalising improves numerical
-  conditioning and lets the same solver handle both solar-system and intergalactic
-  scales (`SOLAR_SYSTEM` vs `INTERGALACTIC`).
+  't = sqrt(L^3 / (G*M))'. This improves numerical conditioning because the solver purely works in non-dimensional units and unit conversions are only performed when displayed to the user. This allows us to even change the unit system while the simulation is running.
 
-### 4. Data structures (FIT1045 assessment focus)
-- **Custom `dynamic_array<T>`** in [dynamic-array.hpp](include/dynamic-array.hpp):
-  this is likely a key marking criterion. You should be able to walk through:
-  - **Amortised O(1) append** via capacity doubling, and **shrink-to-half at 1/4 full**
+### 4. Data structures (from FIT1045 tasks)
+- **Custom 'dynamic_array<T>'** in [dynamic-array.hpp](include/dynamic-array.hpp):
+  comes from the tasks done in the unit:
+  - **O(1) append** via capacity doubling, and **shrink-to-half at 1/4 full**
     to avoid thrashing.
-  - Manual memory management with `malloc` + **placement new** + explicit
-    destructor calls -- explain *why* you cannot just use `new[]` (you want
-    capacity != size, raw uninitialised storage).
+  - Manual memory management with 'malloc' + **placement new** + explicit
+    destructor calls. Using this over 'new' allows us to have unallocated extra capacity.
   - Rule-of-three: copy constructor, copy assignment (with self-assignment guard),
     destructor.
-  - `std::move` in reallocation/append for efficiency.
-- **`Vec3` / `Vec4` / `Mat4`** in
-  [data-structures.hpp](include/data-structures.hpp) with operator overloading --
-  shows you understand operators, const-correctness, and 4x4 matrix multiplication.
+  - 'std::move' in reallocation/append for efficiency.
+- **'Vec3' / 'Vec4' / 'Mat4'** in
+  [data-structures.hpp](include/data-structures.hpp) with operator overloading -
+  shows my understanding of operators.
 
-### 5. The graphics pipeline (impressive for a first-year)
+### 5. The graphics pipeline
 - **Full 3D projection from scratch** -- no OpenGL. In
-  [camera.cpp](src/camera.cpp) you build a **view matrix** (look-at) and a
+  [camera.cpp](src/camera.cpp) I build a **view matrix** (look-at) and a
   **perspective projection matrix**, then in [figure.cpp](src/figure.cpp) do the
-  `viewProj * point` transform, the **perspective divide** (`/w`), and the
-  **NDC -> screen mapping** (including the y-flip). Be ready to explain homogeneous
-  coordinates and why `w` is needed.
+  'viewProj * point' transform, the **perspective divide** ('/w'), and the
+  **NDC -> screen mapping** (including the y-flip).
 - **Liang-Barsky line clipping** ([figure.cpp:101](src/figure.cpp#L101)) to clip
-  axes/points to the figure box. Cited from Wikipedia (good academic honesty) --
-  but make sure you can explain the `t0/t1` interval-tightening logic in your own
-  words, as you may be asked.
-- **Orbit-camera controls**: drag-to-rotate (azimuth/elevation on a fixed-radius
+  axes/points to the figure box. Cited from Wikipedia (yes, I know, but it works).
+- **Orbit-camera controls**: drag-to-rotate (elevation on a fixed-radius
   sphere with pole-clamping) and scroll-to-zoom in [camera.cpp](src/camera.cpp).
-- **`Figure` as a mini matplotlib**: `set_xlim`, `set_title`, `plot`, `plot3d`,
-  `show` -- a reusable plotting abstraction rather than ad-hoc draw calls.
+- **'Figure' as a mini matplotlib**: 'set_xlim', 'set_title', 'plot', 'plot3d',
+  'show' -- a reusable plotting abstraction built to mimic my experience with matplotlib and MATLAB formats.
 
 ### 6. JSON config loader
-- **Hand-written recursive-descent JSON parser**
+- **Hand-written JSON parser**
   ([parsejson.cpp](src/parsejson.cpp)) -- iterator-based, recursive for nested
-  objects, with int/double type inference. Lets configurations be modular and
-  repeatable. Pairs with `FreeJson` for manual tree cleanup (recursive delete).
-- The supplied configs (`solar_system`, `pythagorean_three_body`,
-  `circumbinary_planet`, `milky_way_andromeda`, `triple_collision`) give you
-  ready-made, visually interesting demos. **Note: the JSON configs were
-  AI-generated in your own format -- disclosed in [main.cpp](src/main.cpp).**
+  objects, with int/double type detection. Lets configurations be modular and
+  repeatable. Pairs with 'FreeJson' for manual tree cleanup (recursive delete).
+- The supplied configs allow for ready-made, visually interesting demos. **Note: some JSON configs were
+  AI-generated in my own format -- disclosed in [main.cpp](src/main.cpp).**
 
 ### 7. Cross-platform abstraction
-- A single `Window` interface ([window.hpp](include/window.hpp)) with two native
+- A single 'Window' interface ([window.hpp](include/window.hpp)) with two native
   backends: Cocoa/Objective-C++ ([window.mm](src/platform/mac/window.mm)) and
-  Win32 ([window.cpp](src/platform/win/window.cpp)). The `void* _window` hides the
-  OS handle. Good demonstration of interface-vs-implementation thinking.
+  Win32 ([window.cpp](src/platform/win/window.cpp)). The 'void* _window' hides the
+  OS handle. Demonstration of my interface-vs-implementation thinking.
 
 ---
 
-## Things to be prepared for (honest weak spots / likely questions)
+## Weaknesses of the simulator
 
-- **O(N^2) force calculation**: fine for these demos, but know that real codes use
-  Barnes-Hut (O(N log N)) tree codes -- you mention hybrid integrators
-  (Mercurius/IAS15) in your implementation-plan comment, so expect to be asked why
-  you stopped at leapfrog (good answer already in your `main.cpp` notes:
-  symplectic + softening gives good Newtonian results; a hybrid integrator is more
-  maths than coding).
-- **No energy/momentum conservation tracking**: you deliberately skipped this
-  ([main.cpp](src/main.cpp) notes). A natural examiner question is "how do you know
-  your integration is correct?" -- having a one-line answer (symplectic implies
-  bounded energy; could plot total energy as a check) is worth rehearsing.
-- **Parser robustness**: uses `assert` rather than graceful error handling, and
-  does not support strings/arrays/booleans/null -- only nested objects and numbers.
-  Know its limits.
+- **O(N^2) force calculation**: fine for demos with a small number of massive particles (like this one), but real codes use Barnes-Hut (O(N log N)) tree codes -- I discussed using other simulators at length in my comments for the implementation plan in [main.cpp](src/main.cpp). I tested the simulator on my older Windows PC and it's much slower than an M5 Mac.
+- **No energy/momentum conservation tracking**: I deliberately skipped this
+  ([main.cpp](src/main.cpp) notes). How do I know my integration scheme is physical without testing for every conservation? The simple answer is that the leapfrog algorithm is, by definition, a symplectic solver (energy is bounded). I mentioned this as a possible extension to the project if more advanced hybrid integration schemes were used (to verify physicality).
 
 ---
 
 ## Build & run
 
-```bash
+'''bash
 make            # builds bin/simulator
 ./bin/simulator
-```
+'''
