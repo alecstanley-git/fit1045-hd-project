@@ -1,0 +1,146 @@
+[
+  {
+    "file": "src/body.cpp",
+    "arguments": [
+      "/usr/bin/clang++",
+      "src/body.cpp",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-std=c++20",
+      "-Iinclude",
+      "-fobjc-arc",
+      "-o",
+      "bin/simulator"
+    ],
+    "directory": "/Users/alec/Documents/fit1045-hd-project",
+    "output": "bin/simulator"
+  },
+  {
+    "file": "src/camera.cpp",
+    "arguments": [
+      "/usr/bin/clang++",
+      "src/camera.cpp",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-std=c++20",
+      "-Iinclude",
+      "-fobjc-arc",
+      "-o",
+      "bin/simulator"
+    ],
+    "directory": "/Users/alec/Documents/fit1045-hd-project",
+    "output": "bin/simulator"
+  },
+  {
+    "file": "src/console-input.cpp",
+    "arguments": [
+      "/usr/bin/clang++",
+      "src/console-input.cpp",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-std=c++20",
+      "-Iinclude",
+      "-fobjc-arc",
+      "-o",
+      "bin/simulator"
+    ],
+    "directory": "/Users/alec/Documents/fit1045-hd-project",
+    "output": "bin/simulator"
+  },
+  {
+    "file": "src/data-structures.cpp",
+    "arguments": [
+      "/usr/bin/clang++",
+      "src/data-structures.cpp",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-std=c++20",
+      "-Iinclude",
+      "-fobjc-arc",
+      "-o",
+      "bin/simulator"
+    ],
+    "directory": "/Users/alec/Documents/fit1045-hd-project",
+    "output": "bin/simulator"
+  },
+  {
+    "file": "src/figure.cpp",
+    "arguments": [
+      "/usr/bin/clang++",
+      "src/figure.cpp",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-std=c++20",
+      "-Iinclude",
+      "-fobjc-arc",
+      "-o",
+      "bin/simulator"
+    ],
+    "directory": "/Users/alec/Documents/fit1045-hd-project",
+    "output": "bin/simulator"
+  },
+  {
+    "file": "src/main.cpp",
+    "arguments": [
+      "/usr/bin/clang++",
+      "src/main.cpp",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-std=c++20",
+      "-Iinclude",
+      "-fobjc-arc",
+      "-o",
+      "bin/simulator"
+    ],
+    "directory": "/Users/alec/Documents/fit1045-hd-project",
+    "output": "bin/simulator"
+  },
+  {
+    "file": "src/parsejson.cpp",
+    "arguments": [
+      "/usr/bin/clang++",
+      "src/parsejson.cpp",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-std=c++20",
+      "-Iinclude",
+      "-fobjc-arc",
+      "-o",
+      "bin/simulator"
+    ],
+    "directory": "/Users/alec/Documents/fit1045-hd-project",
+    "output": "bin/simulator"
+  },
+  {
+    "file": "src/platform/mac/window.mm",
+    "arguments": [
+      "/usr/bin/clang++",
+      "src/platform/mac/window.mm",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-std=c++20",
+      "-Iinclude",
+      "-fobjc-arc",
+      "-o",
+      "bin/simulator"
+    ],
+    "directory": "/Users/alec/Documents/fit1045-hd-project",
+    "output": "bin/simulator"
+  }
+]
